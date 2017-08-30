@@ -1,8 +1,10 @@
-**University of Pennsylvania, CIS 565: GPU Programming and Architecture,
-Project 1 - Flocking**
+Project 1 CUDA Flocking
+====================
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+**University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 1**
+
+* YAOYI BAI (pennkey: byaoyi)
+* Tested on: Windows 10, i7-6700HQ  @2.60GHz 16GB, GTX 980M 8253MB (My own Dell Alienware R3)
 
 ### (TODO: Your README)
 
