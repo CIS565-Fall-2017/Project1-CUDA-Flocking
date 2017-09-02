@@ -236,16 +236,21 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 	// Rule 2: boids try to stay a distance d away from each other
 	// Rule 3: boids try to match the speed of surrounding boids
 
-	// Rule 1 velocity
-	glm::vec3 v1(0.f);
-	// Rule 2 velocity
-	glm::vec3 v2(0.f);
-	// Rule 3 velocity
-	glm::vec3 v3(0.f);
+	glm::vec3 v1(0.f);		
+	glm::vec3 v2(0.f);		
+	glm::vec3 v3(0.f);		
 
-	// Get boid passed in
+	// Boid passed into function
 	glm::vec3 boidPos = pos[iSelf];
 	glm::vec3 boidVel = vel[iSelf];
+
+	glm::vec3 perceivedCenter(0.f);
+	glm::vec3 c(0.f);
+	glm::vec3 perceivedVelocity(0.f);
+
+	// Neighbor counts
+	float neighbors1 = 0.f;
+	float neighbors3 = 0.f;
 
 	// Loop through all the boids
 	for (int i = 0; i < N; i++) {
@@ -253,36 +258,43 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 		glm::vec3 bPos = pos[i];
 		glm::vec3 bVel = vel[i];
 
-		// Rule 1
-		glm::vec3 perceivedCenter(0.f);
-		if (i != iSelf && glm::distance(bPos, boidPos) < rule1Distance) {
-			perceivedCenter += bPos;
-		}
+		float distance = glm::distance(bPos, boidPos);
 
-		perceivedCenter /= (N - 1);
+		if (i != iSelf) {
+			// Rule 1
+			if (distance < rule1Distance) {
+				perceivedCenter += bPos;
+				
+				// Incrememnt neighbor count
+				neighbors1++;
+			}
 
-		v1 = (perceivedCenter - boidPos) * rule1Scale;
-
-		// Rule 2
-		glm::vec3 c(0.f);
-		if (i != iSelf && glm::distance(bPos, boidPos) < rule2Distance) {
-			if (glm::length(bPos - boidPos) < 100) {
+			// Rule 2
+			if (distance < rule2Distance) {
 				c -= (bPos - boidPos);
 			}
+
+			// Rule 3
+			if (distance < rule3Distance) {
+				perceivedVelocity += bVel;
+
+				// Incrememnt neighbor count
+				neighbors3++;
+			}
 		}
-
-		v2 = c * rule2Scale;
-
-		// Rule 3
-		glm::vec3 perceivedVelocity(0.f);
-		if (i != iSelf && glm::distance(bPos, boidPos) < rule3Distance) {
-			perceivedVelocity += bVel;
-		}
-	
-		perceivedVelocity /= (N - 1);
-
-		v3 = perceivedVelocity * rule3Scale;
 	}
+
+	// Use neighbor count because we don't want to account for boids that 
+	// didn't meet the rule1Distance requirement
+	perceivedCenter /= neighbors1;
+	v1 = (perceivedCenter - boidPos) * rule1Scale;
+
+	v2 = c * rule2Scale;
+
+	// Use neighbor count because we don't want to account for boids that 
+	// didn't meet the rule3Distance requirement
+	perceivedVelocity /= neighbors3;
+	v3 = perceivedVelocity * rule3Scale;
 
 	return boidVel + v1 + v2 + v3;
 }
@@ -307,6 +319,7 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   // Clamp the speed
 	if (glm::length(newVel) > maxSpeed) {
 		// TODO
+		newVel = glm::normalize(newVel) * maxSpeed;
 	}
 	
   // Record the new velocity into vel2. Question: why NOT vel1?
