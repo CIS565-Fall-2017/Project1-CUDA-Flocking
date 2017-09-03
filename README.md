@@ -10,3 +10,28 @@ Project 1 CUDA Flocking
 
 Include screenshots, analysis, etc. (Remember, this is public, so don't put
 anything here that you don't want to share with the world.)
+
+
+# 1.Naive Boid Simulation #
+## Kernel.cu Structure##
+
+![](https://i.imgur.com/eEBgLtx.jpg)
+
+## Result ##
+At first, there are few boids that have velocity, because they are enough close to some other boids. 
+
+![](https://i.imgur.com/aFRIjlS.jpg)
+
+As time goes by, more and more boids gained velocity and began to move inside the space.
+
+![](https://i.imgur.com/CiOQrMc.jpg)
+
+Boids began to gather together in groups. 
+
+![](https://i.imgur.com/DSgmihS.jpg)
+
+We can also rotate the camera to see different view points.
+
+![](https://i.imgur.com/IKFC3u9.jpg)
+
+# 2.Better Flocking #
