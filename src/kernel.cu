@@ -516,11 +516,17 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 
 }
 
+__device__ glm::vec3 newUpdateVelocity(int N, int boidIndex, const glm::vec3 *pos, const glm::vec3 *vel,
+const int* particleGridIndices, int *gridCellStartIndices, int *gridCellEndIndices)
+{
+
+}
+
 __global__ void kernUpdateVelNeighborSearchScattered(
   int N, int gridResolution, glm::vec3 gridMin,
   float inverseCellWidth, float cellWidth,
   int *gridCellStartIndices, int *gridCellEndIndices,
-  int *particleArrayIndices,
+  int *particleArrayIndices, int* particleGridIndices/*I added this pointer*/,
   glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2) {
   // TODO-2.1 - Update a boid's velocity using the uniform grid to reduce
   // the number of boids that need to be checked.
@@ -535,16 +541,19 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	{
 		return;
 	}
+	int boidIndex = particleArrayIndices[index];
+	int gridIndex = particleGridIndices[index];
+	int startValue = gridCellStartIndices[index];
+	int endValue = gridCellEndIndices[index];
 
 
 
-
-	glm::vec3 updatedVel = computeVelocityChange(N, index, pos, vel1);
+	glm::vec3 updatedVel = newUpdateVelocity(N, boidIndex, pos, vel1,particleGridIndices,gridCellStartIndices,gridCellEndIndices);
 	if (glm::length(updatedVel) > maxSpeed)
 	{
 		updatedVel = glm::normalize(updatedVel)*maxSpeed;
 	}
-	vel2[index] = updatedVel;
+	vel2[boidIndex] = updatedVel;
 
 }
 
@@ -618,8 +627,9 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // - Ping-pong buffers as needed
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
 	kernComputeIndices << <fullBlocksPerGrid, blockSize >> > (numObjects, int(gridCellCount*gridCellWidth), dev_pos, devBoidIndex, devGridCellnumber);
+	cudaThreadSynchronize();
 
-
+	//sorting 
 	//*****************thrust 
 	int *dev_intBoids;
 	int *dev_intGrids;
