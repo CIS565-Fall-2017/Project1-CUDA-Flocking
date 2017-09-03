@@ -31,6 +31,14 @@ void checkCUDAError(const char *msg, int line = -1) {
   }
 }
 
+//***************My own enum 
+enum StartEnd
+{
+	StartAndEnd = 1,
+	Start = 2,
+	End = 3,
+	Other = 4,
+};
 
 /*****************
 * Configuration *
@@ -79,6 +87,15 @@ int *dev_particleGridIndices; // What grid cell is this particle in?
 // needed for use with thrust
 thrust::device_ptr<int> dev_thrust_particleArrayIndices;
 thrust::device_ptr<int> dev_thrust_particleGridIndices;
+
+//************My own pointers here ********************
+int* devGridCellnumber;
+int* devBoidIndex;
+int* gridStartIndecies;
+int* gridEndIndecies;
+thrust::device_ptr<int> dev_thrust_girdCellNumber;
+thrust::device_ptr<int> dev_boidIndex;
+//End of my own pointers 
 
 int *dev_gridCellStartIndices; // What part of dev_particleArrayIndices belongs
 int *dev_gridCellEndIndices;   // to this cell?
@@ -169,6 +186,18 @@ void Boids::initSimulation(int N) {
   gridMinimum.z -= halfGridWidth;
 
   // TODO-2.1 TODO-2.3 - Allocate additional buffers here.
+  cudaMalloc((void**)&devGridCellnumber, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc devGridCellnumber failed!");
+
+  cudaMalloc((void**)&devBoidIndex, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc devBoidIndex failed!");
+
+  cudaMalloc((void**)&gridStartIndecies, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc gridStartIndecies failed!");
+
+  cudaMalloc((void**)&gridEndIndecies, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc gridEndIndecies failed!");
+
   cudaThreadSynchronize();
 }
 
@@ -391,6 +420,19 @@ __global__ void kernComputeIndices(int N, int gridResolution,
     // - Label each boid with the index of its grid cell.
     // - Set up a parallel array of integer indices as pointers to the actual
     //   boid data in pos and vel1/vel2
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (index < N) {
+		return;
+	}
+
+	indices[index] = index;
+	glm::vec3 boidPosition = pos[index];
+	int xIdx = floor((boidPosition.x - gridMin.x)*inverseCellWidth);
+	int yIdx = floor((boidPosition.y - gridMin.y)*inverseCellWidth);
+	int zIdx = floor((boidPosition.z - gridMin.z)*inverseCellWidth);
+
+	int gridIdx = gridIndex3Dto1D(xIdx, yIdx, zIdx, gridResolution);
+	gridIndices[index] = gridIdx;
 }
 
 // LOOK-2.1 Consider how this could be useful for indicating that a cell
@@ -402,12 +444,76 @@ __global__ void kernResetIntBuffer(int N, int *intBuffer, int value) {
   }
 }
 
+//As for my method, I think this is a very bad way
+//I don't think it is really efficient to put so many branches into this kernel 
+//Whereas I think it is super inefficient, I think I need better way.
 __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
   int *gridCellStartIndices, int *gridCellEndIndices) {
   // TODO-2.1
   // Identify the start point of each cell in the gridIndices array.
   // This is basically a parallel unrolling of a loop that goes
   // "this index doesn't match the one before it, must be a new cell!"
+
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (index >= N)
+	{
+		return;
+	}
+
+	if (index == N - 1)
+	{
+		if (particleGridIndices[index - 1] != particleGridIndices[index])
+		{
+			gridCellEndIndices[index] = StartAndEnd;
+			gridCellStartIndices[index] = StartAndEnd;
+		}
+		else
+		{
+			gridCellEndIndices[index] = End;
+			gridCellStartIndices[index] = Other;
+		}
+	}
+	else if (index == 0)
+	{
+		if (particleGridIndices[index + 1] != particleGridIndices[index])
+		{
+			gridCellEndIndices[index] = StartAndEnd;
+			gridCellStartIndices[index] = StartAndEnd;
+		}
+		else
+		{
+			gridCellEndIndices[index] = Other;
+			gridCellStartIndices[index] = Start;
+		}
+	}
+	else if ((particleGridIndices[index - 1] != particleGridIndices[index]) && (particleGridIndices[index] != particleGridIndices[index + 1]))
+	{
+		//start and end point 
+		gridCellStartIndices[index] = StartAndEnd;
+		gridCellEndIndices[index] = StartAndEnd;
+	}
+	//which means index here is a start point
+	else if (particleGridIndices[index - 1] != particleGridIndices[index])
+	{
+		//start point
+		gridCellStartIndices[index] = Start;
+		gridCellEndIndices[index] = Other;
+	}
+	//which means index here is an end point 
+	else if (particleGridIndices[index] != particleGridIndices[index + 1])
+	{
+		//end point 
+		gridCellStartIndices[index] = Other;
+		gridCellEndIndices[index] = End;
+	}
+	else
+	{
+		//other points 
+		gridCellStartIndices[index] = Other;
+		gridCellEndIndices[index] = Other;
+	}
+
+
 }
 
 __global__ void kernUpdateVelNeighborSearchScattered(
@@ -424,6 +530,22 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   // - Access each boid in the cell and compute velocity change from
   //   the boids rules, if this boid is within the neighborhood distance.
   // - Clamp the speed change before putting the new speed in vel2
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (index >= N)
+	{
+		return;
+	}
+
+
+
+
+	glm::vec3 updatedVel = computeVelocityChange(N, index, pos, vel1);
+	if (glm::length(updatedVel) > maxSpeed)
+	{
+		updatedVel = glm::normalize(updatedVel)*maxSpeed;
+	}
+	vel2[index] = updatedVel;
+
 }
 
 __global__ void kernUpdateVelNeighborSearchCoherent(
@@ -450,6 +572,12 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 */
 void Boids::stepSimulationNaive(float dt) {
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
+	//cudaEvent_t beginEvent;
+	//cudaEvent_t endEvent;
+
+	//cudaEventCreate(&beginEvent);
+	//cudaEventCreate(&endEvent);
+	//cudaEventRecord(beginEvent, 0);
 
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
 
@@ -463,7 +591,15 @@ void Boids::stepSimulationNaive(float dt) {
 
   // TODO-1.2 ping-pong the velocity buffers
 	cudaMemcpy(dev_vel1, dev_vel2, sizeof(glm::vec3)*numObjects, cudaMemcpyDeviceToDevice);
+	cudaThreadSynchronize();
 
+	//cudaEventRecord(endEvent, 0);
+	//float timeValue;
+	//cudaEventElapsedTime(&timeValue, beginEvent, endEvent);
+
+	//std::cout << "Calculation time of this loop: " << timeValue << std::endl;
+	//cudaEventDestroy(beginEvent);
+	//cudaEventDestroy(endEvent);
 
 }
 
@@ -480,6 +616,50 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // - Perform velocity updates using neighbor search
   // - Update positions
   // - Ping-pong buffers as needed
+	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+	kernComputeIndices << <fullBlocksPerGrid, blockSize >> > (numObjects, int(gridCellCount*gridCellWidth), dev_pos, devBoidIndex, devGridCellnumber);
+
+
+	//*****************thrust 
+	int *dev_intBoids;
+	int *dev_intGrids;
+
+	cudaMalloc((void**)&dev_intBoids, numObjects * sizeof(int));
+	checkCUDAErrorWithLine("cudaMalloc dev_intKeys failed!");
+
+	cudaMalloc((void**)&dev_intGrids, numObjects * sizeof(int));
+	checkCUDAErrorWithLine("cudaMalloc dev_intValues failed!");
+
+	cudaMemcpy(dev_intBoids, devBoidIndex, sizeof(int) * numObjects, cudaMemcpyHostToDevice);
+	cudaMemcpy(dev_intGrids, devGridCellnumber, sizeof(int) * numObjects, cudaMemcpyHostToDevice);
+
+	thrust::device_ptr<int> dev_thrust_keys(dev_intBoids);
+	thrust::device_ptr<int> dev_thrust_values(dev_intGrids);
+
+	thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + numObjects, dev_thrust_values);
+
+//I think the memcpy should be different from the example down there
+	//since the devBoidIndex and devGridCellnumber are located in device 
+	cudaMemcpy(devBoidIndex, dev_intBoids, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
+	cudaMemcpy(devGridCellnumber, dev_intGrids, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
+	checkCUDAErrorWithLine("memcpy back failed!");
+
+	cudaFree(dev_intBoids);
+	cudaFree(dev_intGrids);
+	checkCUDAErrorWithLine("cudaFree failed!");
+
+	//****************
+	//!!!!!!!!!!!!!!!Super not sure here
+	kernUpdateVelNeighborSearchScattered << <fullBlocksPerGrid, blockSize >> > (numObjects, int(gridCellCount*gridCellWidth),
+		gridMinimum, gridInverseCellWidth, gridCellWidth, gridStartIndecies, gridEndIndecies, /*not sure*/devGridCellnumber, dev_pos, dev_vel1, dev_vel2);
+
+
+	//as usual down here
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> >(numObjects, dt, dev_pos, dev_vel2);
+	cudaThreadSynchronize();
+
+	cudaMemcpy(dev_vel1, dev_vel2, sizeof(glm::vec3)*numObjects, cudaMemcpyDeviceToDevice);
+	cudaThreadSynchronize();
 }
 
 void Boids::stepSimulationCoherentGrid(float dt) {
@@ -506,6 +686,11 @@ void Boids::endSimulation() {
   cudaFree(dev_pos);
 
   // TODO-2.1 TODO-2.3 - Free any additional buffers here.
+  //****************TODO2.1 cudaFree
+  cudaFree(devGridCellnumber);
+  cudaFree(devBoidIndex);
+  cudaFree(gridStartIndecies);
+  cudaFree(gridEndIndecies);
 }
 
 void Boids::unitTest() {

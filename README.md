@@ -13,7 +13,7 @@ anything here that you don't want to share with the world.)
 
 
 # 1.Naive Boid Simulation #
-## Kernel.cu Structure##
+## Kernel.cu Structure
 
 ![](https://i.imgur.com/eEBgLtx.jpg)
 
