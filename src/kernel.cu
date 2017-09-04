@@ -31,14 +31,6 @@ void checkCUDAError(const char *msg, int line = -1) {
   }
 }
 
-//***************My own enum 
-enum StartEnd
-{
-	StartAndEnd = 1,
-	Start = 2,
-	End = 3,
-	Other = 4,
-};
 
 /*****************
 * Configuration *
@@ -460,66 +452,107 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 		return;
 	}
 
+	if (index == 0)
+	{
+		gridCellStartIndices[index] = index;
+		if (particleGridIndices[index] != particleGridIndices[index + 1])
+		{
+			gridCellEndIndices[index] = index;
+		}
+		else
+		{
+			int i = index;
+			while (particleGridIndices[i] == particleGridIndices[i + 1])
+			{
+				i++;
+			}
+			gridCellEndIndices[index] = i + 1;
+		}
+		return;
+	}
+
 	if (index == N - 1)
 	{
+		gridCellEndIndices[index] = index;
 		if (particleGridIndices[index - 1] != particleGridIndices[index])
 		{
-			gridCellEndIndices[index] = StartAndEnd;
-			gridCellStartIndices[index] = StartAndEnd;
+			gridCellStartIndices[index] = index;
 		}
 		else
 		{
-			gridCellEndIndices[index] = End;
-			gridCellStartIndices[index] = Other;
+			int j = index;
+			while (particleGridIndices[j - 1] == particleGridIndices[j])
+			{
+				j--;
+			}
+			gridCellStartIndices[index] = j - 1;
 		}
+		return;
 	}
-	else if (index == 0)
+
+	//others
+	if (particleGridIndices[index - 1] != particleGridIndices[index])
 	{
-		if (particleGridIndices[index + 1] != particleGridIndices[index])
-		{
-			gridCellEndIndices[index] = StartAndEnd;
-			gridCellStartIndices[index] = StartAndEnd;
-		}
-		else
-		{
-			gridCellEndIndices[index] = Other;
-			gridCellStartIndices[index] = Start;
-		}
-	}
-	else if ((particleGridIndices[index - 1] != particleGridIndices[index]) && (particleGridIndices[index] != particleGridIndices[index + 1]))
-	{
-		//start and end point 
-		gridCellStartIndices[index] = StartAndEnd;
-		gridCellEndIndices[index] = StartAndEnd;
-	}
-	//which means index here is a start point
-	else if (particleGridIndices[index - 1] != particleGridIndices[index])
-	{
-		//start point
-		gridCellStartIndices[index] = Start;
-		gridCellEndIndices[index] = Other;
-	}
-	//which means index here is an end point 
-	else if (particleGridIndices[index] != particleGridIndices[index + 1])
-	{
-		//end point 
-		gridCellStartIndices[index] = Other;
-		gridCellEndIndices[index] = End;
+		gridCellStartIndices[index] = index;
 	}
 	else
 	{
-		//other points 
-		gridCellStartIndices[index] = Other;
-		gridCellEndIndices[index] = Other;
+		int k = index;
+		while (particleGridIndices[k - 1] == particleGridIndices[k])
+		{
+			k--;
+		}
+		gridCellStartIndices[index] = k - 1;
 	}
 
+	if (particleGridIndices[index] != particleGridIndices[index + 1])
+	{
+		gridCellEndIndices[index] = index;
+	}
+	else
+	{
+		int p = index;
+		while (particleGridIndices[p] == particleGridIndices[p + 1])
+		{
+			p++;
+		}
+		gridCellEndIndices[index] = p + 1;
+	}
+	return;
+}
+__device__ glm::vec3 gridIndex1Dto3D(int gridIndex, int gridResolution)
+{
+	int zIdx = floor(gridIndex / (gridResolution*gridResolution));
+	int yIdx = floor((gridIndex - zIdx*gridResolution*gridResolution)/gridResolution);
+	int xIdx = gridIndex - zIdx*gridResolution*gridResolution - yIdx*gridResolution;
+	glm::vec3 gridIndex3D = glm::vec3(xIdx, yIdx, zIdx);
+	return gridIndex3D;
+}
+
+__device__ glm::vec3 NewThreeRules()
+{
 
 }
 
-__device__ glm::vec3 newUpdateVelocity(int N, int boidIndex, const glm::vec3 *pos, const glm::vec3 *vel,
+__device__ glm::vec3 newUpdateVelocity(int N,int index, int boidIndex, const glm::vec3 *pos, const glm::vec3 *vel, const int *particleArrayIndices,
 const int* particleGridIndices, int *gridCellStartIndices, int *gridCellEndIndices)
 {
+	int gridIndex = particleGridIndices[index];
+	glm::vec3 gridIndex3D = gridIndex1Dto3D(gridIndex, gridSideCount);
 
+	glm::vec3 newVelocity = glm::vec3(0.f);
+
+	int startIndex = gridCellStartIndices[index];
+	int endIndex = gridCellEndIndices[index];
+
+	//add up the speed of boids in the same grid
+	for (int i = startIndex;i <= endIndex;i++)
+	{
+		int tempBoidIndex = particleArrayIndices[i];
+	}
+	
+	//add up the speed of adjcent grids
+	
 }
 
 __global__ void kernUpdateVelNeighborSearchScattered(
@@ -548,7 +581,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
 
 
-	glm::vec3 updatedVel = newUpdateVelocity(N, boidIndex, pos, vel1,particleGridIndices,gridCellStartIndices,gridCellEndIndices);
+	glm::vec3 updatedVel = newUpdateVelocity(N,index, boidIndex, pos, vel1, particleArrayIndices,particleGridIndices,gridCellStartIndices,gridCellEndIndices);
 	if (glm::length(updatedVel) > maxSpeed)
 	{
 		updatedVel = glm::normalize(updatedVel)*maxSpeed;
