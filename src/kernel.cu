@@ -233,7 +233,50 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
   // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
   // Rule 2: boids try to stay a distance d away from each other
   // Rule 3: boids try to match the speed of surrounding boids
-  return glm::vec3(0.0f, 0.0f, 0.0f);
+  glm::vec3 thisPos = pos[iSelf];
+  glm::vec3 perceivedCenter;
+  glm::vec3 cohesionVel;
+  glm::vec3 separationVel;
+  glm::vec3 alignmentVel;
+  int rule1NeighborCount;
+  int rule3NeighborCount;
+  
+  for (int i = 0; i < N; i++)
+  {
+    if (i == iSelf)
+    {
+      continue;
+    }
+
+    glm::vec3 otherPos = pos[i];
+
+    if (glm::distance(thisPos, otherPos) < rule1Distance)
+    {
+      perceivedCenter += otherPos;
+      rule1NeighborCount++;
+    }
+
+    if (glm::distance(thisPos, otherPos) < rule2Distance)
+    {
+      separationVel -= otherPos - thisPos;
+    }
+
+    if (glm::distance(thisPos, otherPos) < rule3Distance)
+    {
+      alignmentVel += vel[i];
+      rule3NeighborCount++;
+    }
+  }
+
+  perceivedCenter /= rule1NeighborCount;
+  cohesionVel = (perceivedCenter - thisPos) * rule1Scale;
+
+  separationVel *= rule2Scale;
+
+  alignmentVel /= rule3NeighborCount;
+  alignmentVel = alignmentVel * rule3Scale;
+
+  return cohesionVel + separationVel + alignmentVel;
 }
 
 /**
@@ -245,6 +288,15 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   // Compute a new velocity based on pos and vel1
   // Clamp the speed
   // Record the new velocity into vel2. Question: why NOT vel1?
+  int index = threadIdx.x + (blockIdx.x * blockDim.x);
+
+  if (index >= N)
+  {
+    return;
+  }
+
+  glm::vec3 velChange = computeVelocityChange(N, index, pos, vel1);
+  vel2[index] += velChange;
 }
 
 /**
@@ -349,6 +401,14 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 void Boids::stepSimulationNaive(float dt) {
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
   // TODO-1.2 ping-pong the velocity buffers
+  for (int i = 0; i < dt; i++)
+  {
+    kernUpdateVelocityBruteForce<<<fullBlocksPerGrid, threadsPerBlock>>>(numObjects, dev_pos, dev_vel1, dev_vel2);
+  }
+
+  glm::vec3 *temp = dev_vel1;
+  dev_vel1 = dev_vel2;
+  dev_vel2 = temp;
 }
 
 void Boids::stepSimulationScatteredGrid(float dt) {
