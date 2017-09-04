@@ -230,21 +230,54 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 * in the `pos` and `vel` arrays.
 */
 __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
-  // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-  // Rule 2: boids try to stay a distance d away from each other
-  // Rule 3: boids try to match the speed of surrounding boids
-  return glm::vec3(0.0f, 0.0f, 0.0f);
+
+  float count0 = 0.f; float count3 = 0.f;
+  glm::vec3 spos = pos[iSelf];
+  glm::vec3 v1(0.f), v2(0.f), v3(0.f);
+
+  for (int i = 0; i < N; ++i) {
+    // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+    if (i != iSelf) {
+      glm::vec3 bpos = pos[i];
+      float dist = glm::distance(spos, bpos);
+      if (dist < rule1Distance) {
+        v1 += bpos;
+        count1 ++;
+      } 
+      // Rule 2: boids try to stay a distance d away from each other
+      if (dist < rule2Distance) {
+        v2 -= (bpos - spos);
+      } 
+      // Rule 3: boids try to match the speed of surrounding boids
+      if (dist < rule3Distance) {
+        v3 += vel[i];
+        count3 ++;
+      }
+    }
+  }
+
+  v1 = (count1 > 0) ? v1/count1 - spos;
+  v3 = (count3 > 0) ? v3/count3 - vel[iSelf];
+  return v1*rule1Scale + v2*rule2Scale+ v3*rule3Scale;
 }
 
 /**
 * TODO-1.2 implement basic flocking
 * For each of the `N` bodies, update its position based on its current velocity.
 */
-__global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
-  glm::vec3 *vel1, glm::vec3 *vel2) {
+__global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2) {
+
+  int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (index >= N) return; 
+
   // Compute a new velocity based on pos and vel1
+  glm::vec3 vel = vel1[index] + computeVelocityChange(N, index, pos, vel1);
+
   // Clamp the speed
+  vel = (glm::length(vel) > maxSpeed) ? glm::normalize(vel) * maxSpeed : vel;
+
   // Record the new velocity into vel2. Question: why NOT vel1?
+  vel2[index] = vel;
 }
 
 /**
