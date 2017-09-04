@@ -243,6 +243,11 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   glm::vec3 *vel1, glm::vec3 *vel2) {
   // Compute a new velocity based on pos and vel1
+	//Compute the index for the boid
+	//pass the index and other paramters into computeVelocityChange
+	//Some line in here will look like vel2[i] = some final answer.
+	//That final answer will be some operation on pos[i] and vel1[i]
+	//Where i is the index of the boid (?)
   // Clamp the speed
   // Record the new velocity into vel2. Question: why NOT vel1?
 }
