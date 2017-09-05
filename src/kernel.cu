@@ -261,7 +261,11 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	glm::vec3 newVel = computeVelocityChange(N, index, pos, vel1);
   // Clamp the speed
+	if (glm::length(newVel) > maxSpeed) {
+		newVel = glm::normalize(newVel) * maxSpeed;
+	}
   // Record the new velocity into vel2. Question: why NOT vel1?
+	vel2[index] = newVel;
 }
 
 /**
