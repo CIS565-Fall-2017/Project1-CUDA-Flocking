@@ -41,7 +41,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
-#define rule1Distance 5.0f
+#define rule1Distance 10.0f
 #define rule2Distance 3.0f
 #define rule3Distance 5.0f
 
@@ -222,16 +222,6 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 /******************
 * stepSimulation *
 ******************/
-
-/**
-* Helper function to determine if boids are close enough together to matter
-*/
-
-__device__ bool withinRuleDistance(float ruleDistance, glm::vec3 pos1, glm::vec3 pos2) {
-  glm::vec3 distanceVector = pos2 - pos1;
-  return glm::length(distanceVector) < ruleDistance;
-}
-
 /**
 * LOOK-1.2 You can use this as a helper for kernUpdateVelocityBruteForce.
 * __device__ code can be called from a __global__ context
@@ -240,7 +230,6 @@ __device__ bool withinRuleDistance(float ruleDistance, glm::vec3 pos1, glm::vec3
 */
 __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
 	glm::vec3 finalVel;
-  // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
   glm::vec3 selfPos = pos[iSelf];
   glm::vec3 perceivedCenter = glm::vec3(0.0f);
   glm::vec3 avoidanceVector = glm::vec3(0.0f);
@@ -260,7 +249,7 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
       }
       // Rule 2: boids try to stay a distance d away from each other
       if (distance < rule2Distance) {
-        avoidanceVector -= (selfPos - boidPos);
+        avoidanceVector -= (boidPos - selfPos);
       }
       // Rule 3: boids try to match the speed of surrounding boids
       if (distance < rule3Distance) {
@@ -270,18 +259,13 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
     }
   }
   perceivedCenter = perceivedCenter / (float) nearBoid1Count;
-  perceivedCenter = perceivedCenter * rule1Scale;
-
-  avoidanceVector = avoidanceVector * rule2Scale;
-
   perceivedVel = perceivedVel / (float)nearBoid3Count;
-  perceivedVel = perceivedVel * rule3Scale;
 
   finalVel = (perceivedCenter - selfPos) * rule1Scale;
   finalVel += avoidanceVector * rule2Scale;
   finalVel += perceivedVel * rule3Scale;
 
-	return finalVel;
+	return vel[iSelf] + finalVel;
 }
 
 /**
