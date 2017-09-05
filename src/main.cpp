@@ -64,7 +64,7 @@ bool init(int argc, char **argv) {
   int minor = deviceProp.minor;
 
   std::ostringstream ss;
-  ss << projectName << " [SM " << major << "." << minor << " " << deviceProp.name << "]";
+  ss << projectName << "Josh Lawrence [SM " << major << "." << minor << " " << deviceProp.name << "]";
   deviceName = ss.str();
 
   // Window setup stuff

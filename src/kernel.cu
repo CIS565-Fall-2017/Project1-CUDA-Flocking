@@ -63,7 +63,7 @@ dim3 threadsPerBlock(blockSize);
 
 // LOOK-1.2 - These buffers are here to hold all your boid information.
 // These get allocated for you in Boids::initSimulation.
-// Consider why you would need two velocity buffers in a simulation where each
+// Consider why you would need two velocity buffers in a simulation where each. To maintain state for this frame
 // boid cares about its neighbors' velocities.
 // These are called ping-pong buffers.
 glm::vec3 *dev_pos;
@@ -85,6 +85,7 @@ int *dev_gridCellEndIndices;   // to this cell?
 
 // TODO-2.3 - consider what additional buffers you might need to reshuffle
 // the position and velocity data to be coherent within cells.
+// Don't forget to free in Boids::endSimulation
 
 // LOOK-2.1 - Grid parameters based on simulation parameters.
 // These are automatically computed for you in Boids::initSimulation
@@ -101,9 +102,9 @@ glm::vec3 gridMinimum;
 __host__ __device__ unsigned int hash(unsigned int a) {
   a = (a + 0x7ed55d16) + (a << 12);
   a = (a ^ 0xc761c23c) ^ (a >> 19);
-  a = (a + 0x165667b1) + (a << 5);
-  a = (a + 0xd3a2646c) ^ (a << 9);
-  a = (a + 0xfd7046c5) + (a << 3);
+  a = (a + 0x165667b1) + (a << 5 );
+  a = (a + 0xd3a2646c) ^ (a << 9 );
+  a = (a + 0xfd7046c5) + (a << 3 );
   a = (a ^ 0xb55a4f09) ^ (a >> 16);
   return a;
 }
@@ -168,7 +169,7 @@ void Boids::initSimulation(int N) {
   gridMinimum.y -= halfGridWidth;
   gridMinimum.z -= halfGridWidth;
 
-  // TODO-2.1 TODO-2.3 - Allocate additional buffers here.
+  // TODO-2.1 TODO-2.3 - Allocate additional buffers here. Don't forget to free in Boids::endSimulation
   cudaThreadSynchronize();
 }
 
@@ -229,22 +230,83 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 * Compute the new velocity on the body with index `iSelf` due to the `N` boids
 * in the `pos` and `vel` arrays.
 */
-__device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
-  // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-  // Rule 2: boids try to stay a distance d away from each other
-  // Rule 3: boids try to match the speed of surrounding boids
-  return glm::vec3(0.0f, 0.0f, 0.0f);
+__device__ glm::vec3 computeVelocityChange(const int N, const int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
+	//rule1
+	glm::vec3 totalpos(0);
+	int count1 = 0;
+
+	//rule2
+	glm::vec3 totaldisp(0);
+
+	//rule3
+	glm::vec3 totalvel(0);
+	int count3 = 0;
+
+	const glm::vec3 iselfpos = pos[iSelf];
+
+	for (int i = 0; i < N; ++i) {
+		if (i == iSelf) { continue; }
+		const glm::vec3 disp = pos[i] - iselfpos;
+		const float dist = disp.length();
+
+		if (dist < rule1Distance) {// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+			totalpos += pos[i];
+			count1++;
+		}
+
+		if (dist < rule2Distance) {// Rule 2: boids try to stay a distance d away from each other
+			//psuedo: if abs or mag is less than 100?
+			totaldisp -= disp;
+		}
+
+		if (dist < rule3Distance) {// Rule 3: boids try to match the speed of surrounding boids
+			totalvel += vel[i];
+			count3++;
+		}
+	}
+
+	//rule1
+	glm::vec3 rule1vel(0);
+	if (count1 > 0) {
+		glm::vec3 centerofmass = totalpos * (1.f / count1);
+		rule1vel = (centerofmass - iselfpos) * rule1Scale;
+	}
+
+	//rule2
+	glm::vec3 rule2vel = totaldisp * rule2Scale;
+
+	//rule3
+	glm::vec3 rule3vel(0);
+	if (count3 > 0) {
+		glm::vec3 averagevel = totalvel * (1.f / count3);
+		rule3vel = averagevel * rule3Scale;
+	}
+
+	return vel[iSelf] + rule1vel + rule2vel + rule3vel;
+	//return glm::vec3(0);
+
 }
 
 /**
 * TODO-1.2 implement basic flocking
 * For each of the `N` bodies, update its position based on its current velocity.
 */
-__global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
-  glm::vec3 *vel1, glm::vec3 *vel2) {
+__global__ void kernUpdateVelocityBruteForce(const int N, const glm::vec3 *pos,
+  const glm::vec3 *vel1, glm::vec3 *vel2) {
+  const int index = threadIdx.x + (blockIdx.x * blockDim.x);
+  if (index >= N) { return; }
+
   // Compute a new velocity based on pos and vel1
+  glm::vec3 newvel = computeVelocityChange(N, index, pos, vel1);
+
   // Clamp the speed
+  const float newvelspeed = newvel.length();
+  if (newvelspeed - maxSpeed > FLT_EPSILON) {
+	  newvel *= (maxSpeed / newvelspeed);
+  }
+
   // Record the new velocity into vel2. Question: why NOT vel1?
+  vel2[index] = newvel;
 }
 
 /**
@@ -254,9 +316,8 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
 __global__ void kernUpdatePos(int N, float dt, glm::vec3 *pos, glm::vec3 *vel) {
   // Update position by velocity
   int index = threadIdx.x + (blockIdx.x * blockDim.x);
-  if (index >= N) {
-    return;
-  }
+  if (index >= N) { return; }
+
   glm::vec3 thisPos = pos[index];
   thisPos += vel[index] * dt;
 
@@ -346,9 +407,16 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 /**
 * Step the entire N-body simulation by `dt` seconds.
 */
-void Boids::stepSimulationNaive(float dt) {
+void Boids::stepSimulationNaive(float dt) { 
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
-  // TODO-1.2 ping-pong the velocity buffers
+	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+	kernUpdateVelocityBruteForce << < fullBlocksPerGrid, threadsPerBlock >> > (numObjects, dev_pos, dev_vel1, dev_vel2);
+	kernUpdatePos << < fullBlocksPerGrid, threadsPerBlock >> > (numObjects, dt, dev_pos, dev_vel2);
+
+  // TODO-1.2 ping-pong the velocity buffers, i.e. swap the pointers
+	glm::vec3* temp = dev_vel1;
+	dev_vel1 = dev_vel2;
+	dev_vel2 = temp;
 }
 
 void Boids::stepSimulationScatteredGrid(float dt) {
