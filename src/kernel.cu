@@ -239,46 +239,46 @@ __device__ bool withinRuleDistance(float ruleDistance, glm::vec3 pos1, glm::vec3
 * in the `pos` and `vel` arrays.
 */
 __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
-
 	glm::vec3 finalVel;
   // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
   glm::vec3 selfPos = pos[iSelf];
   glm::vec3 perceivedCenter = glm::vec3(0.0f);
+  glm::vec3 avoidanceVector = glm::vec3(0.0f);
+  glm::vec3 perceivedVel = glm::vec3(0.0f);
   glm::vec3 boidPos;
-  int nearBoidCount = 0;
+  int nearBoid1Count = 0;
+  int nearBoid3Count = 0;
+  float distance;
   for (int i = 0; i < N; i++) {
 	  boidPos = pos[i];
-	  if (i != iSelf && withinRuleDistance(rule1Distance, selfPos, boidPos)) {
-	    perceivedCenter += boidPos;
-      nearBoidCount++;
-	  }
-  }
-  perceivedCenter = perceivedCenter / (float) nearBoidCount;
-
-  finalVel = (perceivedCenter - selfPos) * rule1Scale;
-
-  // Rule 2: boids try to stay a distance d away from each other
-  glm::vec3 avoidanceVector = glm::vec3(0.0f);
-  for (int i = 0; i < N; i++) {
-    boidPos = pos[i];
-    if (i != iSelf && withinRuleDistance(rule1Distance, selfPos, boidPos)) {
-      if (withinRuleDistance(rule2Distance, selfPos, boidPos)) {
+    distance = glm::length(selfPos - boidPos);
+    if (i != iSelf) {
+      // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+      if (distance < rule1Distance) {
+        perceivedCenter += boidPos;
+        nearBoid1Count++;
+      }
+      // Rule 2: boids try to stay a distance d away from each other
+      if (distance < rule2Distance) {
         avoidanceVector -= (selfPos - boidPos);
+      }
+      // Rule 3: boids try to match the speed of surrounding boids
+      if (distance < rule3Distance) {
+        perceivedVel += vel[i];
+        nearBoid3Count++;
       }
     }
   }
+  perceivedCenter = perceivedCenter / (float) nearBoid1Count;
+  perceivedCenter = perceivedCenter * rule1Scale;
+
+  avoidanceVector = avoidanceVector * rule2Scale;
+
+  perceivedVel = perceivedVel / (float)nearBoid3Count;
+  perceivedVel = perceivedVel * rule3Scale;
+
+  finalVel = (perceivedCenter - selfPos) * rule1Scale;
   finalVel += avoidanceVector * rule2Scale;
-  // Rule 3: boids try to match the speed of surrounding boids
-  nearBoidCount = 0;
-  glm::vec3 perceivedVel = glm::vec3(0.0f);
-  for (int i = 0; i < N; i++) {
-    boidPos = pos[i];
-    if (i != iSelf && withinRuleDistance(rule3Distance, selfPos, boidPos)) {
-      perceivedVel += vel[i];
-      nearBoidCount++;
-    }
-  }
-  perceivedVel = perceivedVel / (float)nearBoidCount;
   finalVel += perceivedVel * rule3Scale;
 
 	return finalVel;
