@@ -237,6 +237,14 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 }
 
 /**
+* Helper function to determine if boids are close enough together to matter
+*/
+
+__device__ bool withinRuleDistance(float ruleDistance, const glm::vec3 *pos1, const glm::vec3 *pos2) {
+	return false; 
+}
+
+/**
 * TODO-1.2 implement basic flocking
 * For each of the `N` bodies, update its position based on its current velocity.
 */
@@ -248,6 +256,17 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
 	//Some line in here will look like vel2[i] = some final answer.
 	//That final answer will be some operation on pos[i] and vel1[i]
 	//Where i is the index of the boid (?)
+  //Rule 1
+	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (index >= N) {
+		return;
+	}
+	glm::vec3 perceivedCenter = glm::vec3(0.0f);
+	for (int i = 0; i < N; i++) {
+		if (i != index ) {
+
+		}
+	}
   // Clamp the speed
   // Record the new velocity into vel2. Question: why NOT vel1?
 }
@@ -353,6 +372,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 */
 void Boids::stepSimulationNaive(float dt) {
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
+	//step forward
   // TODO-1.2 ping-pong the velocity buffers
 }
 
