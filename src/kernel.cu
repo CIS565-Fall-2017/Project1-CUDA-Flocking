@@ -74,9 +74,9 @@ glm::vec3 *dev_vel2;
 // pointers on your own too.
 
 // For efficient sorting and the uniform grid. These should always be parallel.
-int *dev_particleArrayIndices; // What index in dev_pos and dev_velX represents this particle?
-int *dev_particleGridIndices; // What grid cell is this particle in?
-// needed for use with thrust
+int *dev_particleArrayIndices;	// What index in dev_pos and dev_velX represents this particle?
+int *dev_particleGridIndices;	// What grid cell is this particle in?
+								// needed for use with thrust
 thrust::device_ptr<int> dev_thrust_particleArrayIndices;
 thrust::device_ptr<int> dev_thrust_particleGridIndices;
 
@@ -170,6 +170,22 @@ void Boids::initSimulation(int N) {
 
   // TODO-2.1 TODO-2.3 - Allocate additional buffers here.
   cudaThreadSynchronize();
+
+  // 2.1
+  cudaMalloc((void**)&dev_particleArrayIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleArrayIndices failed!");
+  cudaMalloc((void**)&dev_particleGridIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleGridIndices failed!");
+
+  cudaMalloc((void**)&dev_thrust_particleArrayIndices, N * sizeof(thrust::device_ptr<int>));
+  checkCUDAErrorWithLine("cudaMalloc dev_thrust_particleArrayIndices failed!");
+  cudaMalloc((void**)&dev_thrust_particleGridIndices, N * sizeof(thrust::device_ptr<int>));
+  checkCUDAErrorWithLine("cudaMalloc dev_thrust_particleGridIndices failed!");
+
+  cudaMalloc((void**) &dev_gridCellStartIndices, sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_gridCellStartIndices failed!");
+  cudaMalloc((void**) &dev_gridCellEndIndices, sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
 }
 
 
@@ -286,6 +302,16 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 
 	// Use neighbor count because we don't want to account for boids that 
 	// didn't meet the rule1Distance requirement
+
+	/*if (neighbors1 == 0) {
+		v1 = glm::vec3(0.f);
+	} 
+	else {
+		perceivedCenter /= neighbors1;
+		v1 = (perceivedCenter - boidPos) * rule1Scale;
+	}
+*/
+
 	perceivedCenter /= neighbors1;
 	v1 = (perceivedCenter - boidPos) * rule1Scale;
 
@@ -293,10 +319,17 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 
 	// Use neighbor count because we don't want to account for boids that 
 	// didn't meet the rule3Distance requirement
-	perceivedVelocity /= neighbors3;
-	v3 = perceivedVelocity * rule3Scale;
+	//if (neighbors3 == 0) {
+		//v3 = glm::vec3(0.f);
+	//}
+	//else {
+		perceivedVelocity /= neighbors3;
+		v3 = perceivedVelocity * rule3Scale;
+	//}
 
-	return boidVel + v1 + v2 + v3;
+	//return boidVel + v1;
+
+	return  v1 + v2 + v3;
 }
 
 /**
@@ -314,11 +347,12 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
 	}
 
 	// Get the new velocity 
-	glm::vec3 newVel = computeVelocityChange(N, index, pos, vel1);
+	glm::vec3 newVel = computeVelocityChange(N, index, pos, vel1) + vel1[index];
 
   // Clamp the speed
 	if (glm::length(newVel) > maxSpeed) {
 		// TODO
+		//glm::clamp(newVel, -maxSpeed, maxSpeed);
 		newVel = glm::normalize(newVel) * maxSpeed;
 	}
 	
@@ -368,6 +402,17 @@ __global__ void kernComputeIndices(int N, int gridResolution,
     // - Label each boid with the index of its grid cell.
     // - Set up a parallel array of integer indices as pointers to the actual
     //   boid data in pos and vel1/vel2
+
+	for (int i = 0; i < N; i++) {
+		// Current boid.
+		glm::vec3 bPos = pos[i];
+
+		// Get position of where the boid is on the grid.
+		int idx = gridIndex3Dto1D(bPos.x, bPos.y, bPos.z, gridResolution);
+
+		// Set that grid index to point to the boid's index.
+		indices[idx] = i;
+	}
 }
 
 // LOOK-2.1 Consider how this could be useful for indicating that a cell
@@ -434,7 +479,12 @@ void Boids::stepSimulationNaive(float dt) {
 	checkCUDAErrorWithLine("kernUpdateVelocityBruteForce failed!");
 
 	// Update Position
+	// Use vel1 because kernels can't assume sequential data passing. 
+	// The CPU just sends this stuff to the GPU saying do this function and since
+	// we're swapping buffers we are always using the same slot so to speak.
 	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel1);
+	// vel2 gave me grey stuff. it was not delicious. i asked the dishes.
+	//kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel2);
 	checkCUDAErrorWithLine("kernUpdatePos failed!");
 
   // TODO-1.2 ping-pong the velocity buffers
@@ -454,6 +504,8 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // - Perform velocity updates using neighbor search
   // - Update positions
   // - Ping-pong buffers as needed
+
+
 }
 
 void Boids::stepSimulationCoherentGrid(float dt) {
