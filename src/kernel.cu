@@ -238,8 +238,9 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
   glm::vec3 cohesionVel;
   glm::vec3 separationVel;
   glm::vec3 alignmentVel;
-  int rule1NeighborCount;
-  int rule3NeighborCount;
+  float rule1NeighborCount;
+  float rule2NeighborCount;
+  float rule3NeighborCount;
   
   for (int i = 0; i < N; i++)
   {
@@ -249,32 +250,42 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
     }
 
     glm::vec3 otherPos = pos[i];
+    float distance = glm::distance(thisPos, otherPos);
 
-    if (glm::distance(thisPos, otherPos) < rule1Distance)
+    if (distance < rule1Distance)
     {
       perceivedCenter += otherPos;
-      rule1NeighborCount++;
+      rule1NeighborCount += 1.0;
     }
 
-    if (glm::distance(thisPos, otherPos) < rule2Distance)
+    if (distance < rule2Distance)
     {
       separationVel -= otherPos - thisPos;
     }
 
-    if (glm::distance(thisPos, otherPos) < rule3Distance)
+    if (distance < rule3Distance)
     {
       alignmentVel += vel[i];
-      rule3NeighborCount++;
+      rule3NeighborCount += 1.0;
     }
   }
 
-  perceivedCenter /= rule1NeighborCount;
-  cohesionVel = (perceivedCenter - thisPos) * rule1Scale;
+  if (rule1NeighborCount > 0)
+  {
+    perceivedCenter /= rule1NeighborCount;
+    cohesionVel = (perceivedCenter - thisPos) * rule1Scale;
+  }
 
   separationVel *= rule2Scale;
 
-  alignmentVel /= rule3NeighborCount;
-  alignmentVel = alignmentVel * rule3Scale;
+  if (rule3NeighborCount > 0)
+  {
+    alignmentVel = alignmentVel / rule3NeighborCount * rule3Scale;
+  }
+  else
+  {
+    alignmentVel = glm::vec3(0);
+  }
 
   return cohesionVel + separationVel + alignmentVel;
 }
@@ -296,6 +307,7 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   }
 
   glm::vec3 velChange = computeVelocityChange(N, index, pos, vel1);
+  //glm::vec3 velChange = glm::vec3(0.1, 0.1, 0.1);
   vel2[index] += velChange;
 }
 
@@ -401,10 +413,10 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 void Boids::stepSimulationNaive(float dt) {
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
   // TODO-1.2 ping-pong the velocity buffers
-  for (int i = 0; i < dt; i++)
-  {
-    kernUpdateVelocityBruteForce<<<fullBlocksPerGrid, threadsPerBlock>>>(numObjects, dev_pos, dev_vel1, dev_vel2);
-  }
+  dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+
+  kernUpdateVelocityBruteForce << <fullBlocksPerGrid, threadsPerBlock>> > (numObjects, dev_pos, dev_vel1, dev_vel2);
+  kernUpdatePos << <fullBlocksPerGrid, threadsPerBlock >> > (numObjects, dt, dev_pos, dev_vel2);
 
   glm::vec3 *temp = dev_vel1;
   dev_vel1 = dev_vel2;
