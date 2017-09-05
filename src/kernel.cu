@@ -259,7 +259,7 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
     }
   }
   perceived_center /= (N-1);
-  percieved_velocity /= (N-1);
+  perceived_velocity /= (N-1);
   return rule1Scale * (perceived_center - current_pos) +
          rule2Scale * rule2_acc +
 	 rule3Scale * perceived_velocity;
@@ -381,7 +381,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 * Step the entire N-body simulation by `dt` seconds.
 */
 void Boids::stepSimulationNaive(float dt) {
-  dim3 fullBlocksPerGrid((N + blockSize - 1) / blockSize);
+  dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
   kernUpdateVelocityBruteForce<<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_pos, dev_vel1, dev_vel2);
   kernUpdatePos<<<fullBlocksPerGrid, blockSize>>>(numObjects, dt, dev_pos, dev_vel2);
