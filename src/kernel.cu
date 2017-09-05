@@ -240,8 +240,9 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 * Helper function to determine if boids are close enough together to matter
 */
 
-__device__ bool withinRuleDistance(float ruleDistance, const glm::vec3 *pos1, const glm::vec3 *pos2) {
-	return false; 
+__device__ bool withinRuleDistance(float ruleDistance, glm::vec3 pos1, glm::vec3 pos2) {
+	glm::vec3 distanceVector = pos2 - pos1;
+	return glm::length(distanceVector) < ruleDistance;
 }
 
 /**
@@ -258,15 +259,7 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
 	//Where i is the index of the boid (?)
   //Rule 1
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (index >= N) {
-		return;
-	}
-	glm::vec3 perceivedCenter = glm::vec3(0.0f);
-	for (int i = 0; i < N; i++) {
-		if (i != index ) {
-
-		}
-	}
+	glm::vec3 newVel = computeVelocityChange(N, index, pos, vel1);
   // Clamp the speed
   // Record the new velocity into vel2. Question: why NOT vel1?
 }
