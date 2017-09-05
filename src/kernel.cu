@@ -224,26 +224,64 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 ******************/
 
 /**
+* Helper function to determine if boids are close enough together to matter
+*/
+
+__device__ bool withinRuleDistance(float ruleDistance, glm::vec3 pos1, glm::vec3 pos2) {
+  glm::vec3 distanceVector = pos2 - pos1;
+  return glm::length(distanceVector) < ruleDistance;
+}
+
+/**
 * LOOK-1.2 You can use this as a helper for kernUpdateVelocityBruteForce.
 * __device__ code can be called from a __global__ context
 * Compute the new velocity on the body with index `iSelf` due to the `N` boids
 * in the `pos` and `vel` arrays.
 */
 __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
+
+	glm::vec3 finalVel;
   // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+  glm::vec3 selfPos = pos[iSelf];
+  glm::vec3 perceivedCenter = glm::vec3(0.0f);
+  glm::vec3 boidPos;
+  int nearBoidCount = 0;
+  for (int i = 0; i < N; i++) {
+	  boidPos = pos[i];
+	  if (i != iSelf && withinRuleDistance(rule1Distance, selfPos, boidPos)) {
+	    perceivedCenter += boidPos;
+      nearBoidCount++;
+	  }
+  }
+  perceivedCenter = perceivedCenter / (float) nearBoidCount;
+
+  finalVel = (perceivedCenter - selfPos) * rule1Scale;
+
   // Rule 2: boids try to stay a distance d away from each other
+  glm::vec3 avoidanceVector = glm::vec3(0.0f);
+  for (int i = 0; i < N; i++) {
+    boidPos = pos[i];
+    if (i != iSelf && withinRuleDistance(rule1Distance, selfPos, boidPos)) {
+      if (withinRuleDistance(rule2Distance, selfPos, boidPos)) {
+        avoidanceVector -= (selfPos - boidPos);
+      }
+    }
+  }
+  finalVel += avoidanceVector * rule2Scale;
   // Rule 3: boids try to match the speed of surrounding boids
-  //return glm::vec3(0.0f, 0.0f, 0.0f);
-	return -pos[iSelf];
-}
+  nearBoidCount = 0;
+  glm::vec3 perceivedVel = glm::vec3(0.0f);
+  for (int i = 0; i < N; i++) {
+    boidPos = pos[i];
+    if (i != iSelf && withinRuleDistance(rule3Distance, selfPos, boidPos)) {
+      perceivedVel += vel[i];
+      nearBoidCount++;
+    }
+  }
+  perceivedVel = perceivedVel / (float)nearBoidCount;
+  finalVel += perceivedVel * rule3Scale;
 
-/**
-* Helper function to determine if boids are close enough together to matter
-*/
-
-__device__ bool withinRuleDistance(float ruleDistance, glm::vec3 pos1, glm::vec3 pos2) {
-	glm::vec3 distanceVector = pos2 - pos1;
-	return glm::length(distanceVector) < ruleDistance;
+	return finalVel;
 }
 
 /**
