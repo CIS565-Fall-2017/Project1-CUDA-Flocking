@@ -182,9 +182,9 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&dev_thrust_particleGridIndices, N * sizeof(thrust::device_ptr<int>));
   checkCUDAErrorWithLine("cudaMalloc dev_thrust_particleGridIndices failed!");
 
-  cudaMalloc((void**) &dev_gridCellStartIndices, sizeof(int));
+  cudaMalloc((void**) &dev_gridCellStartIndices, gridCellCount * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_gridCellStartIndices failed!");
-  cudaMalloc((void**) &dev_gridCellEndIndices, sizeof(int));
+  cudaMalloc((void**) &dev_gridCellEndIndices, gridCellCount * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
 }
 
