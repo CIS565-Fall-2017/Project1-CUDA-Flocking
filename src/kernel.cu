@@ -232,59 +232,53 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 */
 __device__ glm::vec3 computeVelocityChange(const int N, const int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
 	//rule1
-	glm::vec3 totalpos(0);
-	int count1 = 0;
+	glm::vec3 rule1vel(0.f);
+	int countrule1 = 0;
 
 	//rule2
-	glm::vec3 totaldisp(0);
+	glm::vec3 rule2vel(0.f);
 
 	//rule3
-	glm::vec3 totalvel(0);
-	int count3 = 0;
+	glm::vec3 rule3vel(0.f);
+	int countrule3 = 0;
 
 	const glm::vec3 iselfpos = pos[iSelf];
 
 	for (int i = 0; i < N; ++i) {
 		if (i == iSelf) { continue; }
-		const glm::vec3 disp = pos[i] - iselfpos;
-		const float dist = disp.length();
+		const glm::vec3 displacement = pos[i] - iselfpos;
+		const float distance = glm::length(displacement);
 
-		if (dist < rule1Distance) {// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-			totalpos += pos[i];
-			count1++;
+		if (distance < rule1Distance) {// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+			rule1vel += pos[i];
+			countrule1++;
 		}
 
-		if (dist < rule2Distance) {// Rule 2: boids try to stay a distance d away from each other
-			//psuedo: if abs or mag is less than 100?
-			totaldisp -= disp;
+		if (distance < rule2Distance) {// Rule 2: boids try to stay a distance d away from each other
+			rule2vel -= displacement;
 		}
 
-		if (dist < rule3Distance) {// Rule 3: boids try to match the speed of surrounding boids
-			totalvel += vel[i];
-			count3++;
+		if (distance < rule3Distance) {// Rule 3: boids try to match the speed of surrounding boids
+			rule3vel += vel[i];
+			countrule3++;
 		}
 	}
 
 	//rule1
-	glm::vec3 rule1vel(0);
-	if (count1 > 0) {
-		glm::vec3 centerofmass = totalpos * (1.f / count1);
-		rule1vel = (centerofmass - iselfpos) * rule1Scale;
+	if (countrule1 > 0) {
+		rule1vel = rule1Scale * ( (rule1vel / (float)countrule1) - iselfpos ); //scaled vector to center of mass
 	}
 
 	//rule2
-	glm::vec3 rule2vel = totaldisp * rule2Scale;
+	rule2vel = rule2Scale * rule2vel; //pushed away from near neighbors
 
 	//rule3
-	glm::vec3 rule3vel(0);
-	if (count3 > 0) {
-		glm::vec3 averagevel = totalvel * (1.f / count3);
-		rule3vel = averagevel * rule3Scale;
+	if (countrule3 > 0) {
+		rule3vel = rule3Scale * (rule3vel / (float)countrule3);//scaled ave velocity  
 	}
 
 	return vel[iSelf] + rule1vel + rule2vel + rule3vel;
 	//return glm::vec3(0);
-
 }
 
 /**
@@ -300,10 +294,12 @@ __global__ void kernUpdateVelocityBruteForce(const int N, const glm::vec3 *pos,
   glm::vec3 newvel = computeVelocityChange(N, index, pos, vel1);
 
   // Clamp the speed
-  const float newvelspeed = newvel.length();
-  if (newvelspeed - maxSpeed > FLT_EPSILON) {
-	  newvel *= (maxSpeed / newvelspeed);
+  const float newvelspeed = glm::length(newvel);
+  //newvel *= (1.f / newvelspeed) * glm::min(maxSpeed, newvelspeed);//normalizes then scales, NTS: branch still hidden inside glm::min, might as well expose the thread divergence
+  if (newvelspeed > maxSpeed) {
+	  newvel *= (maxSpeed / newvelspeed);//normalizes then scales
   }
+
 
   // Record the new velocity into vel2. Question: why NOT vel1?
   vel2[index] = newvel;
@@ -410,8 +406,8 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 void Boids::stepSimulationNaive(float dt) { 
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
-	kernUpdateVelocityBruteForce << < fullBlocksPerGrid, threadsPerBlock >> > (numObjects, dev_pos, dev_vel1, dev_vel2);
-	kernUpdatePos << < fullBlocksPerGrid, threadsPerBlock >> > (numObjects, dt, dev_pos, dev_vel2);
+	kernUpdateVelocityBruteForce << < fullBlocksPerGrid, blockSize >> > (numObjects, dev_pos, dev_vel1, dev_vel2);
+	kernUpdatePos << < fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel2);
 
   // TODO-1.2 ping-pong the velocity buffers, i.e. swap the pointers
 	glm::vec3* temp = dev_vel1;
