@@ -436,7 +436,7 @@ __global__ void kernComputeIndices(int N, int gridResolution,
     // - Set up a parallel array of integer indices as pointers to the actual
     //   boid data in pos and vel1/vel2
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-	if (index < N) {
+	if (index >= N) {
 		return;
 	}
 
@@ -543,14 +543,15 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 	}
 	return;
 }
-__device__  glm::vec3 gridIndex1Dto3D(int gridIndex, int gridResolution)
-{
-	int zIdx = (int)gridIndex / (gridResolution*gridResolution);
-	int yIdx = (int)((gridIndex - zIdx*gridResolution*gridResolution)/gridResolution);
-	int xIdx = gridIndex - zIdx*gridResolution*gridResolution - yIdx*gridResolution;
-	glm::vec3 gridIndex3D = glm::vec3(xIdx, yIdx, zIdx);
-	return gridIndex3D;
-}
+
+//__device__  glm::vec3 gridIndex1Dto3D(int gridIndex, int gridResolution)
+//{
+//	int zIdx = (int)gridIndex / (gridResolution*gridResolution);
+//	int yIdx = (int)((gridIndex - zIdx*gridResolution*gridResolution)/gridResolution);
+//	int xIdx = gridIndex - zIdx*gridResolution*gridResolution - yIdx*gridResolution;
+//	glm::vec3 gridIndex3D = glm::vec3(xIdx, yIdx, zIdx);
+//	return gridIndex3D;
+//}
 
 
 //for each grid, we calculate the start index 
@@ -576,7 +577,10 @@ const int* particleGridIndices, int *gridCellStartIndices, int *gridCellEndIndic
 	glm::vec3 currentVelocity = vel[boidIndex];
 
 	int gridIndex = particleGridIndices[index];
-	glm::vec3 gridIndex3D = gridIndex1Dto3D(gridIndex, gridSideCount);
+	int gridIdx3Z = (int)gridIndex / (gridSideCount*gridSideCount);
+	int gridIdx3Y = (int)((gridIndex - gridIdx3Z*gridSideCount*gridSideCount) / gridSideCount);
+	int gridIdx3X = gridIndex - gridIdx3Z*gridSideCount*gridSideCount - gridIdx3Y*gridSideCount;
+	//glm::vec3 gridIndex3D = gridIndex1Dto3D(gridIndex, gridSideCount);
 
 	int startIndex = gridCellStartIndices[index];
 	int endIndex = gridCellEndIndices[index];
@@ -621,11 +625,11 @@ const int* particleGridIndices, int *gridCellStartIndices, int *gridCellEndIndic
 	}
 
 	//test the neighboring grid cells 
-	for (int j = (gridIndex3D.x - 1);j <= (gridIndex3D.x + 1);j++)
+	for (int j = (gridIdx3X - 1);j <= (gridIdx3X + 1);j++)
 	{
-		for (int k = (gridIndex3D.y - 1);k <= (gridIndex3D.y + 1);k++)
+		for (int k = (gridIdx3Y - 1);k <= (gridIdx3Y + 1);k++)
 		{
-			for (int m = (gridIndex3D.z - 1);m <= gridIndex3D.z + 1;m++)
+			for (int m = (gridIdx3Z - 1);m <= gridIdx3Z + 1;m++)
 			{
 				//if 3D to 1D is -1 means the grid we are testing does not have 8 neighbors 
 				int testGridIndexBeighbor = gridIndex3Dto1D(j, k, m, gridSideCount);
@@ -825,8 +829,8 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	cudaMalloc((void**)&dev_intGrids, numObjects * sizeof(int));
 	checkCUDAErrorWithLine("cudaMalloc dev_intValues failed!");
 
-	cudaMemcpy(dev_intBoids, devBoidIndex, sizeof(int) * numObjects, cudaMemcpyHostToDevice);
-	cudaMemcpy(dev_intGrids, devGridCellnumber, sizeof(int) * numObjects, cudaMemcpyHostToDevice);
+	cudaMemcpy(dev_intBoids, devBoidIndex, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
+	cudaMemcpy(dev_intGrids, devGridCellnumber, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
 
 	thrust::device_ptr<int> dev_thrust_keys(dev_intBoids);
 	thrust::device_ptr<int> dev_thrust_values(dev_intGrids);
@@ -852,7 +856,7 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	renewGridCellIndex <<<fullBlocksPerGrid, blockSize >>> (numObjects, dev_gridCellStartIndices, gridCellIndex, devGridCellnumber);
     cudaThreadSynchronize();
 
-	kernUpdateVelNeighborSearchScattered << <fullBlocksPerGrid, blockSize >> > (numObjects, intgridSideCount,
+	kernUpdateVelNeighborSearchScattered << <fullBlocksPerGrid, blockSize >> > (numObjects, gridSideCount,
 		gridMinimum, gridInverseCellWidth, gridCellWidth, 
 		dev_gridCellStartIndices, dev_gridCellEndIndices, 
 		devBoidIndex,devGridCellnumber, gridCellIndex, 
