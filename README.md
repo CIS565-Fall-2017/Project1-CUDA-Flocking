@@ -15,6 +15,8 @@ anything here that you don't want to share with the world.)
 # 1.Naive Boid Simulation #
 ## Kernel.cu Structure
 
+The structure of the naive sorting would be quite simple. The work flow of all the functions inside Kernel.cu is listed here. 
+
 ![](https://i.imgur.com/eEBgLtx.jpg)
 
 ## Result ##
@@ -35,3 +37,9 @@ We can also rotate the camera to see different view points.
 ![](https://i.imgur.com/IKFC3u9.jpg)
 
 # 2.Better Flocking #
+
+## Structure ##
+
+Since the structure is super complicated, I think a graph would be a better illustrator:
+
+![](https://i.imgur.com/yvtWad5.jpg)
