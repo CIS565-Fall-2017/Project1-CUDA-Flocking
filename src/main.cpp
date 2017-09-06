@@ -18,7 +18,7 @@
 #define COHERENT_GRID 0
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 5000;
+const int N_FOR_VIS = 500;
 const float DT = 0.2f;
 
 /**
@@ -84,6 +84,7 @@ bool init(int argc, char **argv) {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   window = glfwCreateWindow(width, height, deviceName.c_str(), NULL, NULL);
+	std::printf("unmap vbo pos\n");
   if (!window) {
     glfwTerminate();
     return false;
@@ -220,8 +221,8 @@ void initShaders(GLuint * program) {
     double timebase = 0;
     int frame = 0;
 
-    Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
-                       // your CUDA development setup is ready to go.
+    //Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
+    //                   // your CUDA development setup is ready to go.
 
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();

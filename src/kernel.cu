@@ -52,7 +52,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 #define maxSpeed 1.0f
 
 /*! Size of the starting area in simulation space. */
-#define scene_scale 100.0f
+#define scene_scale 40.0f
 
 /***********************************************
 * Kernel state (pointers are device pointers) *
@@ -241,28 +241,40 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
   // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
   // Rule 2: boids try to stay a distance d away from each other
   // Rule 3: boids try to match the speed of surrounding boids
-  glm::vec3 perceived_center;
-  glm::vec3 rule2_acc;
-  glm::vec3 perceived_velocity;
+  glm::vec3 perceived_center = glm::vec3(0.0f, 0.0f, 0.0f);
+  glm::vec3 rule2_acc = glm::vec3(0.0f, 0.0f, 0.0f);
+  glm::vec3 perceived_velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+  int neighbor1_count = 0;
+  int neighbor2_count = 0;
   glm::vec3 current_pos = pos[iSelf];
   for (int i = 0; i < N; ++i) {
     if (i == iSelf) continue;
     glm::vec3 n_pos = pos[i];
-    if (glm::distance(current_pos, n_pos) < rule1Distance) {
+    float dist = glm::distance(current_pos, n_pos);
+    if (dist < rule1Distance) {
       perceived_center += n_pos;
+      ++neighbor1_count;
     }
-    if (glm::distance(current_pos, n_pos) < rule2Distance) {
-      rule2_acc -= (current_pos - n_pos);
+    if (dist < rule2Distance) {
+      rule2_acc -= (n_pos - current_pos);
     }
-    if (glm::distance(current_pos, n_pos) < rule3Distance) {
+    if (dist < rule3Distance) {
       perceived_velocity += vel[i];
+      ++neighbor2_count;
     }
   }
-  perceived_center /= (N-1);
-  perceived_velocity /= (N-1);
+  if (neighbor1_count == 0) {
+    perceived_center = current_pos;
+  }
+  else {
+    perceived_center /= neighbor1_count;
+  }
+  if (neighbor2_count != 0) {
+    perceived_velocity /= neighbor2_count;
+  }
   return rule1Scale * (perceived_center - current_pos) +
          rule2Scale * rule2_acc +
-	 rule3Scale * perceived_velocity;
+	       rule3Scale * perceived_velocity;
 }
 
 /**
@@ -320,7 +332,7 @@ __global__ void kernComputeIndices(int N, int gridResolution,
   glm::vec3 gridMin, float inverseCellWidth,
   glm::vec3 *pos, int *indices, int *gridIndices) {
     // TODO-2.1
-    // - Label each boid with the index of its grid cell.
+    // - Label each boid with the index of its gri000d cell.
     // - Set up a parallel array of integer indices as pointers to the actual
     //   boid data in pos and vel1/vel2
 }
@@ -389,6 +401,17 @@ void Boids::stepSimulationNaive(float dt) {
   glm::vec3 *dev_vel_temp = dev_vel1;
   dev_vel1 = dev_vel2;
   dev_vel2 = dev_vel_temp;
+  // glm::vec3 values[500];
+  // cudaMemcpy(values, dev_pos, sizeof(glm::vec3) * 500, cudaMemcpyDeviceToHost);
+  // std::cout << "step pos values:\n";
+  // for (int i = 0; i < 5; ++i) {
+  //   std::cout << values[i].x << ", " << values[i].y << ", " << values[i].z << "\n";
+  // }
+  // cudaMemcpy(values, dev_vel2, sizeof(glm::vec3) * 500, cudaMemcpyDeviceToHost);
+  // std::cout << "step vel values:\n";
+  // for (int i = 0; i < 5; ++i) {
+  //   std::cout << values[i].x << ", " << values[i].y << ", " << values[i].z << "\n";
+  // }
 }
 
 void Boids::stepSimulationScatteredGrid(float dt) {
