@@ -270,9 +270,7 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 
 			// Rule 2
 			if (distance < rule2Distance) {
-				if (distance < 100.0f) {
-					c -= posBoid - posSelf;
-				}
+				c -= posBoid - posSelf;
 			}
 
 			// Rule 3
@@ -466,9 +464,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
 							// Rule 2
 							if (distance < rule2Distance) {
-								if (distance < 100.0f) {
-									c -= (posNeighbor - posBoid);
-								}
+								c -= (posNeighbor - posBoid);
 							}
 
 							// Rule 3
