@@ -56,9 +56,10 @@ Since the structure is super complicated, I think a graph would be a better illu
 
 26 Neighbors Searching 
 
-![](https://i.imgur.com/aOoszcF.jpg)
+![](https://i.imgur.com/x6EQG26.jpg)
 
-![](https://i.imgur.com/ZbZxJGa.jpg)
+
+
 
 ## Performance Analysis ##
 

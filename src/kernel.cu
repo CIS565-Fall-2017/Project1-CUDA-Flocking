@@ -638,7 +638,7 @@ const int* particleGridIndices, int *gridCellStartIndices, int *gridCellEndIndic
 					//not the gridItself
 					if (testGridIndexBeighbor != gridIndex)
 					{
-						//equals to nullptr means there are not boids inside this grid cell
+						//equals to -1 means there are not boids inside this grid cell
 						if (gridCellIndex[testGridIndexBeighbor] != -1)
 						{
 							int startPoint = gridCellIndex[testGridIndexBeighbor];
@@ -740,6 +740,7 @@ __global__ void InitializeGridCellIndex(int* gridCellIndex,int gridSideCount)
 	gridCellIndex[index] = -1;
 }
 
+
 __global__ void kernUpdateVelNeighborSearchCoherent(
   int N, int gridResolution, glm::vec3 gridMin,
   float inverseCellWidth, float cellWidth,
@@ -820,32 +821,38 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 
 	//sorting 
 	//*****************thrust 
-	int *dev_intBoids;
-	int *dev_intGrids;
+//	int *dev_intBoids;
+//	int *dev_intGrids;
+//
+//	cudaMalloc((void**)&dev_intBoids, numObjects * sizeof(int));
+//	checkCUDAErrorWithLine("cudaMalloc dev_intKeys failed!");
+//
+//	cudaMalloc((void**)&dev_intGrids, numObjects * sizeof(int));
+//	checkCUDAErrorWithLine("cudaMalloc dev_intValues failed!");
+//
+//	cudaMemcpy(dev_intBoids, devBoidIndex, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
+//	cudaMemcpy(dev_intGrids, devGridCellnumber, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
+//
+//	thrust::device_ptr<int> dev_thrust_keys(dev_intGrids);
+//	thrust::device_ptr<int> dev_thrust_values(dev_intBoids);
+//
+//	thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + numObjects, dev_thrust_values);
+//
+////I think the memcpy should be different from the example down there
+//	//since the devBoidIndex and devGridCellnumber are located in device 
+//	cudaMemcpy(devBoidIndex, dev_intBoids, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
+//	cudaMemcpy(devGridCellnumber, dev_intGrids, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
+//	checkCUDAErrorWithLine("memcpy back failed!");
 
-	cudaMalloc((void**)&dev_intBoids, numObjects * sizeof(int));
-	checkCUDAErrorWithLine("cudaMalloc dev_intKeys failed!");
 
-	cudaMalloc((void**)&dev_intGrids, numObjects * sizeof(int));
-	checkCUDAErrorWithLine("cudaMalloc dev_intValues failed!");
-
-	cudaMemcpy(dev_intBoids, devBoidIndex, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
-	cudaMemcpy(dev_intGrids, devGridCellnumber, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
-
-	thrust::device_ptr<int> dev_thrust_keys(dev_intGrids);
-	thrust::device_ptr<int> dev_thrust_values(dev_intBoids);
+	thrust::device_ptr<int> dev_thrust_keys(devGridCellnumber);
+	thrust::device_ptr<int> dev_thrust_values(devBoidIndex);
 
 	thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + numObjects, dev_thrust_values);
 
-//I think the memcpy should be different from the example down there
-	//since the devBoidIndex and devGridCellnumber are located in device 
-	cudaMemcpy(devBoidIndex, dev_intBoids, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
-	cudaMemcpy(devGridCellnumber, dev_intGrids, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
-	checkCUDAErrorWithLine("memcpy back failed!");
-
-	cudaFree(dev_intBoids);
-	cudaFree(dev_intGrids);
-	checkCUDAErrorWithLine("cudaFree failed!");
+	//cudaFree(dev_intBoids);
+	//cudaFree(dev_intGrids);
+	//checkCUDAErrorWithLine("cudaFree failed!");
 
 	//****************
 	//other steps here 
