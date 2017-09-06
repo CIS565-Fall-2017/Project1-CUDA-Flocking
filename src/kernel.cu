@@ -415,13 +415,16 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int boidIndex = particleArrayIndices[iSelf];
 	glm::vec3 posBoid = pos[boidIndex];
 	glm::vec3 boidCellPosition = (posBoid - gridMin) * inverseCellWidth;
-	int gridIndex = gridIndex3Dto1D(glm::floor(boidCellPosition.x), glm::floor(boidCellPosition.y), glm::floor(boidCellPosition.z), gridResolution);
+	int gridX = glm::floor(boidCellPosition.x);
+	int gridY = glm::floor(boidCellPosition.y);
+	int gridZ = glm::floor(boidCellPosition.z);
+	int gridIndex = gridIndex3Dto1D(gridX, gridY, gridZ, gridResolution);
   // - Identify which cells may contain neighbors. This isn't always 8.
 	int gridResolutionSquared = gridResolution * gridResolution;
 	int numCells = gridResolutionSquared * gridResolution;
-	int x = (boidCellPosition.x > 0.5f) ? 1 : -1;
-	int y = (boidCellPosition.y > 0.5f) ? (gridResolution) : (-gridResolution);
-	int z = (boidCellPosition.z > 0.5f) ? (gridResolutionSquared) : (-gridResolutionSquared);
+	int x = (boidCellPosition.x - gridX > 0.5f) ? 1 : -1;
+	int y = (boidCellPosition.y - gridY > 0.5f) ? (gridResolution) : (-gridResolution);
+	int z = (boidCellPosition.z - gridZ > 0.5f) ? (gridResolutionSquared) : (-gridResolutionSquared);
 
 	glm::vec3 perceivedCenter = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 c = glm::vec3(0.0f, 0.0f, 0.0f);
