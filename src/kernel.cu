@@ -832,8 +832,8 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	cudaMemcpy(dev_intBoids, devBoidIndex, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
 	cudaMemcpy(dev_intGrids, devGridCellnumber, sizeof(int) * numObjects, cudaMemcpyDeviceToDevice);
 
-	thrust::device_ptr<int> dev_thrust_keys(dev_intBoids);
-	thrust::device_ptr<int> dev_thrust_values(dev_intGrids);
+	thrust::device_ptr<int> dev_thrust_keys(dev_intGrids);
+	thrust::device_ptr<int> dev_thrust_values(dev_intBoids);
 
 	thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + numObjects, dev_thrust_values);
 

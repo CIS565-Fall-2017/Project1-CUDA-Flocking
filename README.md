@@ -44,7 +44,7 @@ We can also rotate the camera to see different view points.
 
 ## Performance Analysis ##
 
-# 2.Better Flocking #
+# 2. Better Flocking #
 
 ## Structure ##
 
@@ -52,4 +52,24 @@ Since the structure is super complicated, I think a graph would be a better illu
 
 ![](https://i.imgur.com/yvtWad5.jpg)
 
+## Result ##
+
+26 Neighbors Searching 
+
+![](https://i.imgur.com/aOoszcF.jpg)
+
+![](https://i.imgur.com/ZbZxJGa.jpg)
+
 ## Performance Analysis ##
+
+# 3. Cutting out the middleman #
+
+## Structure ##
+
+## Result ##
+
+
+
+## Performance Analysis ##
+
+# 4. Q&A and Summary #
