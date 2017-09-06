@@ -302,17 +302,21 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 
 	// Use neighbor count because we don't want to account for boids that 
 	// didn't meet the rule1Distance requirement
-	perceivedCenter /= neighbors1;
-	v1 = (perceivedCenter - boidPos) * rule1Scale;
+	if (neighbors1 > 0) {
+		perceivedCenter /= neighbors1;
+		v1 = (perceivedCenter - boidPos) * rule1Scale;
+	}
 
 	v2 = c * rule2Scale;
 
 	// Use neighbor count because we don't want to account for boids that 
 	// didn't meet the rule3Distance requirement
-	perceivedVelocity /= neighbors3;
-	v3 = perceivedVelocity * rule3Scale;
+	if (neighbors3 > 0) {
+		perceivedVelocity /= neighbors3;
+		v3 = perceivedVelocity * rule3Scale;
+	}
 
-	return  v1 + v2 + v3;
+	return boidVel + v1 + v2 + v3;
 }
 
 /**
@@ -330,7 +334,7 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
 	}
 
 	// Get the new velocity 
-	glm::vec3 newVel = computeVelocityChange(N, index, pos, vel1) + vel1[index];
+	glm::vec3 newVel = computeVelocityChange(N, index, pos, vel1);
 
   // Clamp the speed
 	if (glm::length(newVel) > maxSpeed) {
@@ -456,17 +460,37 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2) {
   // TODO-2.1 - Update a boid's velocity using the uniform grid to reduce
   // the number of boids that need to be checked.
-  // - Identify the grid cell that this particle is in
-  // - Identify which cells may contain neighbors. This isn't always 8.
-  // - For each cell, read the start/end indices in the boid pointer array.
-  // - Access each boid in the cell and compute velocity change from
-  //   the boids rules, if this boid is within the neighborhood distance.
-  // - Clamp the speed change before putting the new speed in vel2
 
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= N) {
 		return;
 	}
+
+	// - Identify the grid cell that this particle is in
+	// Gets the boid's index for position 
+	int boidIndex = particleArrayIndices[index];
+	glm::vec3 boidPos = pos[boidIndex];
+	// Get the grid cell
+	int x = (boidPos.x - gridMin.x) * inverseCellWidth;
+	int y = (boidPos.y - gridMin.y) * inverseCellWidth;
+	int z = (boidPos.z - gridMin.z) * inverseCellWidth;
+	int gridCellIndex = gridIndex3Dto1D(x, y, z, gridResolution);
+	
+	// - Identify which cells may contain neighbors. This isn't always 8.
+	int neighbors[8];
+	neighbors[0] = gridIndex3Dto1D(x, y, z, gridResolution);
+	neighbors[1] = gridIndex3Dto1D(x, y, z, gridResolution);
+	neighbors[2] = gridIndex3Dto1D(x, y, z, gridResolution);
+	neighbors[3] = gridIndex3Dto1D(x, y, z, gridResolution);
+	neighbors[4] = gridIndex3Dto1D(x, y, z, gridResolution);
+	neighbors[5] = gridIndex3Dto1D(x, y, z, gridResolution);
+	neighbors[6] = gridIndex3Dto1D(x, y, z, gridResolution);
+	neighbors[7] = gridIndex3Dto1D(x, y, z, gridResolution);
+
+	// - For each cell, read the start/end indices in the boid pointer array.
+	// - Access each boid in the cell and compute velocity change from
+	//   the boids rules, if this boid is within the neighborhood distance.
+	// - Clamp the speed change before putting the new speed in vel2
 }
 
 __global__ void kernUpdateVelNeighborSearchCoherent(
