@@ -13,23 +13,23 @@ The speed of each boid is effected by the power condition (battery status of lab
 ### Performance Analysis
 
 * GPU Spec:
-	Name:                          GeForce GTX 1060
-	Revision:                      6.1
-	Total global memory:           6442450944
-	Total shared memory per block: 49152
-	Total registers per block:     65536
-	Warp size:                     32
-	Max threads per multiprocessor:2048
-	Max grid dimensions:           [2147483647, 65535, 65535]
-	Max threads per block:         1024
-	Max registers per block:       65536
-	Max thread dimensions:         [1024, 1024, 64]
-	Clock rate:                    1569000
-	Total constant memory:         65536
-	Texture alignment:             512
-	Number of multiprocessors:     10
+	- Name:                          GeForce GTX 1060
+	- Revision:                      6.1
+	- Total global memory:           6442450944
+	- Total shared memory per block: 49152
+	- Total registers per block:     65536
+	- Warp size:                     32
+	- Max threads per multiprocessor:2048
+	- Max grid dimensions:           [2147483647, 65535, 65535]
+	- Max threads per block:         1024
+	- Max registers per block:       65536
+	- Max thread dimensions:         [1024, 1024, 64]
+	- Clock rate:                    1569000
+	- Total constant memory:         65536
+	- Texture alignment:             512
+	- Number of multiprocessors:     10
 
-* Performance (ms) depending on the number of boids
+## Performance (ms) depending on the number of boids
 
 ![](images/NoB.png)
 
@@ -45,7 +45,7 @@ The interesting point is, in Coherent Grid, the performance of using 10,000 boid
 It might be caused by GPU memory structure.
 
 
-* Performance (ms) depending on the block size
+## Performance (ms) depending on the block size
 
 ![](images/BlockSize.png)
 
@@ -56,7 +56,7 @@ It might be caused by GPU memory structure.
 As expected, using mutiple blocks gives better performance instead of using just one block.
 But, from certain block size (32 blocks), it is hard to see the difference because GPU has also limited number of threads for calculations.
 
-* Performance (ms) depending on the number of near grids
+## Performance (ms) depending on the number of near grids
 
 ![](images/Non.png)
 
