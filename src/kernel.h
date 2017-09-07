@@ -9,6 +9,8 @@
 #include <cmath>
 #include <vector>
 
+#include <device_launch_parameters.h>
+
 namespace Boids {
     void initSimulation(int N);
     void stepSimulationNaive(float dt);
