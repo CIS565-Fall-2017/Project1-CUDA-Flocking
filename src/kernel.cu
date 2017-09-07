@@ -47,9 +47,9 @@ void checkCUDAError(const char *msg, int line = -1) {
 
 #define rule1Scale 0.01f
 #define rule2Scale 0.1f
-#define rule3Scale 0.1f
+#define rule3Scale 0.2f
 
-#define maxSpeed 1.0f
+#define maxSpeed 5.0f
 
 /*! Size of the starting area in simulation space. */
 #define scene_scale 100.0f
@@ -74,8 +74,8 @@ glm::vec3 *dev_vel2;
 // pointers on your own too.
 
 // For efficient sorting and the uniform grid. These should always be parallel.
-int *dev_particleArrayIndices; // What index in dev_pos and dev_velX represents this particle?
-int *dev_particleGridIndices; // What grid cell is this particle in?
+int *dev_particleArrayIndices; // What index in dev_pos and dev_velX represents this particle? <-- Value used in sorting
+int *dev_particleGridIndices; // What grid cell is this particle in? <-- Key used in sorting
 // needed for use with thrust
 thrust::device_ptr<int> dev_thrust_particleArrayIndices;
 thrust::device_ptr<int> dev_thrust_particleGridIndices;
@@ -169,6 +169,17 @@ void Boids::initSimulation(int N) {
   gridMinimum.z -= halfGridWidth;
 
   // TODO-2.1 TODO-2.3 - Allocate additional buffers here.
+  cudaMalloc((void**)&dev_particleArrayIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleArrayIndices failed!");
+	
+  cudaMalloc((void**)&dev_particleGridIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleGridIndices failed!");
+
+	cudaMalloc((void**)&dev_gridCellStartIndices, N * sizeof(int));
+	checkCUDAErrorWithLine("cudaMalloc dev_gridCellStartIndices failed!");
+
+	cudaMalloc((void**)&dev_gridCellEndIndices, N * sizeof(int));
+	checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
   cudaThreadSynchronize();
 }
 
@@ -409,13 +420,28 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // In Parallel:
   // - label each particle with its array index as well as its grid index.
   //   Use 2x width grids.
-  // - Unstable key sort using Thrust. A stable sort isn't necessary, but you
+	// <-- This is where I need to call a kernel that takes the buffer of array indices
+	//   and uses that to update the buffer of grid indices
+	// <-- Or. Or. Or. I don't need the for loop at the beginning to populate the arrayIndices buffer
+	//	 because I can just populate arrayIndices in parallel each time
+	//   because I don't need to keep the sorted arrayIndices buffer from the last step 
+	//   because it's not even right anymore and only serves as a map to information from the last step.
+  // <-- So what I need is a kernal that populates the arrayIndices, computes its gridLocation,
+	//   and populates the gridIndices buffer from that. 
+	// - Unstable key sort using Thrust. A stable sort isn't necessary, but you
   //   are welcome to do a performance comparison.
+	// <-- do all the sorty sort stuff I see in the unitTest
   // - Naively unroll the loop for finding the start and end indices of each
   //   cell's data pointers in the array of boid indices
+	// <-- No idea how to do this yet. Still needs consideration
   // - Perform velocity updates using neighbor search
+	// <-- Call kernUpdateVelNeighborSearchScattered here
   // - Update positions
+	// <-- Call kernUpdatePos
   // - Ping-pong buffers as needed
+	glm::vec3 *tmpVel = dev_vel1;
+	dev_vel1 = dev_vel2;
+	dev_vel2 = tmpVel;
 }
 
 void Boids::stepSimulationCoherentGrid(float dt) {
@@ -442,6 +468,10 @@ void Boids::endSimulation() {
   cudaFree(dev_pos);
 
   // TODO-2.1 TODO-2.3 - Free any additional buffers here.
+	cudaFree(dev_particleArrayIndices);
+	cudaFree(dev_particleGridIndices);
+	cudaFree(dev_gridCellStartIndices);
+	cudaFree(dev_gridCellEndIndices);
 }
 
 void Boids::unitTest() {
