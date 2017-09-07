@@ -17,9 +17,29 @@
 #define UNIFORM_GRID 1
 #define COHERENT_GRID 1
 
+
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 200000;
+const int N_FOR_VIS = 50000;
 const float DT = 0.2f;
+
+//gtx 1060
+//boids vs fps (with vis/without) 
+//			1000		5000		10000		50000		100000		150000
+//naive		780/1860	370/600		218/300		13/11		3/3			1/1
+//grid		193/312		480/790		630/1300	250/400		118/130		50/56
+//coh		x			480/850		650/1530	400/750		275/410		180/260
+
+//blocksize vs fps (50000 boids, without vis)
+//			16			32			64			128			256			512			1024		
+//naive		7			13			13			11			13			13			12
+//grid		330			370			360			350			350			350			350
+//coh		530			730			720			750			750			730			710
+
+//boids vs fps (novis) cellwidth 1x the neighb size
+//			1000		5000		10000		50000		100000		150000
+//naive		2000		600			350			11			3			1
+//grid		220			25			9			400			120			60
+//coh		x			x			x			900			530			330
 
 /**
 * C main function.

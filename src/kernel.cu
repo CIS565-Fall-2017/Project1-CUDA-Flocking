@@ -15,6 +15,15 @@
 #define imin( a, b ) ( ((a) < (b)) ? (a) : (b) )
 #endif
 
+#define CELLWIDTHDOUBLE 1
+#if CELLWIDTHDOUBLE == 1
+#define CELLWIDTHSCALING 2.f
+#define MAXNEIGHBS 8
+#else
+#define CELLWIDTHSCALING 1.f
+#define MAXNEIGHBS 27
+#endif
+
 #define checkCUDAErrorWithLine(msg) checkCUDAError(msg, __LINE__)
 
 /**
@@ -30,14 +39,13 @@ void checkCUDAError(const char *msg, int line = -1) {
     exit(EXIT_FAILURE);
   }
 }
-
-
 /*****************
 * Configuration *
 *****************/
 
 /*! Block size used for CUDA kernel launch. */
 #define blockSize 128
+
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
@@ -162,7 +170,7 @@ void Boids::initSimulation(int N) {
   checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
 
   // LOOK-2.1 computing grid params
-  gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+  gridCellWidth = CELLWIDTHSCALING * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
   int halfSideCount = (int)(scene_scale / gridCellWidth) + 1;
   gridSideCount = 2 * halfSideCount;
 
@@ -462,8 +470,8 @@ __global__ void kernUpdateVelNeighborSearchScattered(const int N, const int grid
 	glm::vec3 cellxyz_float = (pos[index] - gridMin) * inverseCellWidth; 
 	glm::ivec3 cellxyz(cellxyz_float);
 	const glm::vec3 iselfpos = pos[index];
-	const int possible_neighbs = 8;
-	int neighbs[possible_neighbs];
+	//const int possible_neighbs = 8;
+	int neighbs[MAXNEIGHBS];
 	int total_neighbs = 0;
   // - Identify which cells may contain neighbors. This isn't always 8.
 	//determine which sub region of the cell this boid is in (upper or lower / left or right / front or back) using the cell's centroid
