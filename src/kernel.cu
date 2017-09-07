@@ -556,7 +556,7 @@ void Boids::unitTest() {
   checkCUDAErrorWithLine("cudaFree failed!");
 
   //test kernComputeIndices
-  N = 3;
+  N = 4;
   int sideCount = 10;
   glm::vec3 minimum = glm::vec3(-5.0f, -5.0f, -5.0f);
   float inverseCellWidth = 1.0f;
@@ -577,6 +577,8 @@ void Boids::unitTest() {
   dummyPos[0] = glm::vec3(-4.5f, -4.5f, -4.5f);
   dummyPos[1] = glm::vec3(-3.5f, -4.5f, -4.5f);
   dummyPos[2] = glm::vec3(0.0f, 0.0f, 0.0f);
+  dummyPos[3] = glm::vec3(-0.5f, -1.5f, -2.5f);
+
   cudaMemcpy(dev_dummyPos, dummyPos, N * sizeof(glm::vec3), cudaMemcpyHostToDevice);
   int *dummyArrayIndices = new int[N];
   int *dummyGridIndices = new int[N];
@@ -587,9 +589,10 @@ void Boids::unitTest() {
   cudaMemcpy(dummyArrayIndices, dev_dummyArrayIndices, N * sizeof(int), cudaMemcpyDeviceToHost);
   cudaMemcpy(dummyGridIndices, dev_dummyGridIndices, N * sizeof(int), cudaMemcpyDeviceToHost);
 
-  std::cout << "0: " << dummyArrayIndices[0] << "," << dummyGridIndices[0] << std::endl;
-  std::cout << "1: " << dummyArrayIndices[1] << "," << dummyGridIndices[1] << std::endl;
-  std::cout << "2: " << dummyArrayIndices[2] << "," << dummyGridIndices[2] << std::endl;
+  std::cout << "0: " << dummyArrayIndices[0] << "," << dummyGridIndices[0] << std::endl; //expected 0
+  std::cout << "1: " << dummyArrayIndices[1] << "," << dummyGridIndices[1] << std::endl; //expected 1
+  std::cout << "2: " << dummyArrayIndices[2] << "," << dummyGridIndices[2] << std::endl; //expected 555
+  std::cout << "3: " << dummyArrayIndices[3] << "," << dummyGridIndices[3] << std::endl; //expected 234
 
   delete[] dummyPos;
   delete[] dummyArrayIndices;
@@ -599,7 +602,5 @@ void Boids::unitTest() {
   cudaFree(dev_dummyArrayIndices);
   cudaFree(dev_dummyGridIndices);
   checkCUDAErrorWithLine("cudaFree failed!");
-
-
   return;
 }
