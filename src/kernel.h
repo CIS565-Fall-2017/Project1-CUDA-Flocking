@@ -10,6 +10,9 @@
 #include <vector>
 
 namespace Boids {
+
+	static bool isVel1Used = true;
+
     void initSimulation(int N);
     void stepSimulationNaive(float dt);
     void stepSimulationScatteredGrid(float dt);
