@@ -258,8 +258,8 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
       }
     }
   }
-  perceivedCenter = perceivedCenter / (float) nearBoid1Count;
-  perceivedVel = perceivedVel / (float)nearBoid3Count;
+  perceivedCenter = perceivedCenter / (float) imax(1, nearBoid1Count);
+  perceivedVel = perceivedVel / (float) imax(1, nearBoid3Count);
 
   finalVel = (perceivedCenter - selfPos) * rule1Scale;
   finalVel += avoidanceVector * rule2Scale;
