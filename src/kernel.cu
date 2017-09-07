@@ -37,7 +37,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 *****************/
 
 /*! Block size used for CUDA kernel launch. */
-#define blockSize 128
+#define blockSize 64 //32 // 128
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
@@ -183,9 +183,6 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&reshuffled_dev_vel1, N * sizeof(glm::vec3));
   checkCUDAErrorWithLine("cudaMalloc reshuffled_dev_vel1 failed!");
 
-
-
-
   // 2.1 part allocation
   cudaMalloc((void**)&dev_particleArrayIndices, N * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_particleArrayIndices failed!");
@@ -306,7 +303,6 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 		result += perceived_velocity * rule3Scale;
 	}
 
-   // Sum up three parts and return
 	return  result;
 }
 
@@ -372,9 +368,9 @@ __global__ void kernUpdatePos(int N, float dt, glm::vec3 *pos, glm::vec3 *vel) {
 // LOOK-2.1 Consider this method of computing a 1D index from a 3D grid index.
 // LOOK-2.3 Looking at this method, what would be the most memory efficient
 //          order for iterating over neighboring grid cells?
-//          for(x)										->		for(z)			
-//            for(y)									->			for(y)		
-//             for(z)? Or some other order?				->				for(x)
+//          for(x)									->		for(z)			
+//            for(y)								->			for(y)		
+//             for(z)? Or some other order?			->				for(x)
 __device__ int gridIndex3Dto1D(int x, int y, int z, int gridResolution) {
   return x + y * gridResolution + z * gridResolution * gridResolution;
 }
@@ -638,24 +634,27 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 			// actually, here, we want to get a CELL ROW
 			// from startIndex to endIndex, and we directly use it to access pos, vel1 and vel2,
 			// since they are contiguous in memory
-			int startIndex = gridCellStartIndices[gridIndex3Dto1D(x_int, j, i, gridResolution)];
-			int endIndex = gridCellEndIndices[gridIndex3Dto1D(x_int, j, i, gridResolution)];
+			int girdIndex = gridIndex3Dto1D(x_int, j, i, gridResolution);
+			int startIndex = gridCellStartIndices[girdIndex];
+			int endIndex = gridCellEndIndices[girdIndex];
 
 			if (x - (float)x_int <= 0.5f) {
-				int smallerStartIndex = gridCellStartIndices[gridIndex3Dto1D(x_int - 1, j, i, gridResolution)];
+				int gridIndex_X_Minus = gridIndex3Dto1D(x_int - 1, j, i, gridResolution);
+				int smallerStartIndex = gridCellStartIndices[gridIndex_X_Minus];
 				if (smallerStartIndex != -1) {
 					startIndex = smallerStartIndex;
 					if (endIndex == -1) {
-						endIndex = gridCellEndIndices[gridIndex3Dto1D(x_int - 1, j, i, gridResolution)];
+						endIndex = gridCellEndIndices[gridIndex_X_Minus];
 					}
 				}
 			}
 			else {
-				int largerEndIndex = gridCellEndIndices[gridIndex3Dto1D(x_int + 1, j, i, gridResolution)];
+				int gridIndex_X_Add = gridIndex3Dto1D(x_int + 1, j, i, gridResolution);
+				int largerEndIndex = gridCellEndIndices[gridIndex_X_Add];
 				if (largerEndIndex != -1) {
 					endIndex = largerEndIndex;
 					if (startIndex == -1) {
-						startIndex = gridCellStartIndices[gridIndex3Dto1D(x_int + 1, j, i, gridResolution)];
+						startIndex = gridCellStartIndices[gridIndex_X_Add];
 					}
 				}
 			}
@@ -692,7 +691,6 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 					rule3_N++;
 				}
 			}
-
 		}
 	}
 
@@ -884,7 +882,6 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	temp = dev_vel1;
 	dev_vel1 = dev_vel2;
 	dev_vel2 = temp;
-
 }
 
 void Boids::endSimulation() {
