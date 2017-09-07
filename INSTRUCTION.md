@@ -110,9 +110,7 @@ function rule2(Boid boid)
 
     foreach Boid b
         if b != boid and distance(b, boid) < rule2Distance then
-            if |b.position - boid.position| < 100 then
-                c -= (b.position - boid.position)
-            endif
+            c -= (b.position - boid.position)
         endif
     end
 
@@ -330,7 +328,6 @@ The title should be "Project 1: YOUR NAME".
 The template of the comment section of your pull request is attached below, you can do some copy and paste:  
 
 * [Repo Link](https://link-to-your-repo)
-* `Your PENNKEY`
 * (Briefly) Mentions features that you've completed. Especially those bells and whistles you want to highlight
     * Feature 0
     * Feature 1
