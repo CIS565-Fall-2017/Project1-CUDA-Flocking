@@ -175,11 +175,11 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&dev_particleGridIndices, N * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_particleGridIndices failed!");
 
-	cudaMalloc((void**)&dev_gridCellStartIndices, N * sizeof(int));
-	checkCUDAErrorWithLine("cudaMalloc dev_gridCellStartIndices failed!");
+  cudaMalloc((void**)&dev_gridCellStartIndices, gridSideCount * gridSideCount * gridSideCount * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_gridCellStartIndices failed!");
 
-	cudaMalloc((void**)&dev_gridCellEndIndices, N * sizeof(int));
-	checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
+  cudaMalloc((void**)&dev_gridCellEndIndices, gridSideCount * gridSideCount * gridSideCount * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
   cudaThreadSynchronize();
 }
 
@@ -372,6 +372,34 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
   // Identify the start point of each cell in the gridIndices array.
   // This is basically a parallel unrolling of a loop that goes
   // "this index doesn't match the one before it, must be a new cell!"
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	if (index < N) {
+		int cell = particleGridIndices[index];
+		//Start
+		if (index > 0) 
+		{
+			if (cell != particleGridIndices[index - 1]) 
+			{
+				gridCellStartIndices[cell] = index;
+			}
+		}
+		else 
+		{
+			gridCellStartIndices[cell] = index;
+		}
+		//End
+		if (index < N - 1) {
+			if (cell != particleGridIndices[index + 1])
+			{
+				gridCellEndIndices[cell] = index;
+			}
+		}
+		else if (index == N - 1)
+		{
+			gridCellEndIndices[cell] = index;
+		}
+	}
+
 }
 
 __global__ void kernUpdateVelNeighborSearchScattered(
@@ -431,16 +459,6 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // In Parallel:
   // - label each particle with its array index as well as its grid index.
   //   Use 2x width grids.
-	// <-- This is where I need to call a kernel that takes the buffer of array indices
-	//   and uses that to update the buffer of grid indices
-	// <-- Or. Or. Or. I don't need the for loop at the beginning to populate the arrayIndices buffer
-	//	 because I can just populate arrayIndices in parallel each time
-	//   because I don't need to keep the sorted arrayIndices buffer from the last step 
-	//   because it's not even right anymore and only serves as a map to information from the last step.
-	//   
-  // <-- So what I need is a kernal that populates the arrayIndices, computes its gridLocation,
-	//   and populates the gridIndices buffer from that. 
-	//   Essentially kernComputeIndices
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
 	float inverseCellWidth = 1.0f / gridCellWidth;
 	kernComputeIndices << <fullBlocksPerGrid, blockSize >> > (numObjects, gridSideCount,
@@ -448,6 +466,10 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	// - Unstable key sort using Thrust. A stable sort isn't necessary, but you
   //   are welcome to do a performance comparison.
 	// <-- do all the sorty sort stuff I see in the unitTest
+	thrust::device_ptr<int> dev_thrust_keys(dev_particleGridIndices);
+	thrust::device_ptr<int> dev_thrust_values(dev_particleArrayIndices);
+	// LOOK-2.1 Example for using thrust::sort_by_key
+	thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + numObjects, dev_thrust_values);
   // - Naively unroll the loop for finding the start and end indices of each
   //   cell's data pointers in the array of boid indices
 	// <-- No idea how to do this yet. Still needs consideration
@@ -551,8 +573,38 @@ void Boids::unitTest() {
   // cleanup
   delete[] intKeys;
   delete[] intValues;
-  cudaFree(dev_intKeys);
+  //cudaFree(dev_intKeys);
   cudaFree(dev_intValues);
+  checkCUDAErrorWithLine("cudaFree failed!");
+
+  //test kernIdentifyStartEnd
+  int *dev_dummyStartIndices;
+  int *dev_dummyEndIndices;
+
+  int *dummyStartIndices = new int[N];
+  int *dummyEndIndices = new int[N];
+
+  cudaMalloc((void**)&dev_dummyStartIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_dummyStartIndices failed!");
+
+  cudaMalloc((void**)&dev_dummyEndIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_dummyEndIndices failed!");
+
+  kernIdentifyCellStartEnd <<<fullBlocksPerGrid, blockSize >>>(N, dev_intKeys, dev_dummyStartIndices, dev_dummyEndIndices);
+
+  cudaMemcpy(dummyStartIndices, dev_dummyStartIndices, N * sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(dummyEndIndices, dev_dummyEndIndices, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+  for (int i = 0; i < N; i++) {
+	  std::cout << "  start: " << dummyStartIndices[i];
+	  std::cout << " end: " << dummyEndIndices[i] << std::endl;
+  }
+
+  delete[] dummyStartIndices;
+  delete[] dummyEndIndices;
+  cudaFree(dev_dummyStartIndices);
+  cudaFree(dev_dummyEndIndices);
+  cudaFree(dev_intKeys);
   checkCUDAErrorWithLine("cudaFree failed!");
 
   //test kernComputeIndices
