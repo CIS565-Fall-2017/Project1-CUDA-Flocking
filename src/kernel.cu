@@ -337,6 +337,16 @@ __device__ int gridIndex3Dto1D(int x, int y, int z, int gridResolution) {
   return x + y * gridResolution + z * gridResolution * gridResolution;
 }
 
+__device__ int3 positionToGridIndices(glm::vec3 gridMin, glm::vec3 position, float inverseCellWidth) {
+	glm::vec3 displacement = position - gridMin;
+	displacement = displacement * inverseCellWidth;
+	int3 idx3D;
+	idx3D.x = (int)floorf(displacement.x);
+	idx3D.y = (int)floorf(displacement.y);
+	idx3D.z = (int)floorf(displacement.z);
+	return idx3D;
+}
+
 __global__ void kernComputeIndices(int N, int gridResolution,
   glm::vec3 gridMin, float inverseCellWidth,
   glm::vec3 *pos, int *indices, int *gridIndices) {
@@ -347,12 +357,7 @@ __global__ void kernComputeIndices(int N, int gridResolution,
 	int index = threadIdx.x + blockDim.x * blockIdx.x;
 	if (index < N) {
 		indices[index] = index;
-		glm::vec3 displacement = pos[index] - gridMin;
-		displacement = displacement * inverseCellWidth;
-		int3 idx3D;
-		idx3D.x = (int)floorf(displacement.x);
-		idx3D.y = (int)floorf(displacement.y);
-		idx3D.z = (int)floorf(displacement.z);
+		int3 idx3D = positionToGridIndices(gridMin, pos[index], inverseCellWidth);
 		gridIndices[index] = gridIndex3Dto1D(idx3D.x, idx3D.y, idx3D.z, gridResolution);
 	}
 }
@@ -410,7 +415,9 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2) {
   // TODO-2.1 - Update a boid's velocity using the uniform grid to reduce
   // the number of boids that need to be checked.
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
   // - Identify the grid cell that this particle is in
+	glm::vec3 selfPos = pos[index];
   // - Identify which cells may contain neighbors. This isn't always 8.
   // - For each cell, read the start/end indices in the boid pointer array.
   // - Access each boid in the cell and compute velocity change from
@@ -472,7 +479,8 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + numObjects, dev_thrust_values);
   // - Naively unroll the loop for finding the start and end indices of each
   //   cell's data pointers in the array of boid indices
-	// <-- No idea how to do this yet. Still needs consideration
+	kernIdentifyCellStartEnd << <fullBlocksPerGrid, blockSize >> > (numObjects, dev_particleGridIndices,
+		dev_gridCellStartIndices, dev_gridCellEndIndices);
   // - Perform velocity updates using neighbor search
 	// <-- Call kernUpdateVelNeighborSearchScattered here
   // - Update positions
