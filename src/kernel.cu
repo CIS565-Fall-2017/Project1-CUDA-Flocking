@@ -42,14 +42,14 @@ void checkCUDAError(const char *msg, int line = -1) {
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
 #define rule1Distance 10.0f
-#define rule2Distance 3.0f
-#define rule3Distance 5.0f
+#define rule2Distance 6.0f
+#define rule3Distance 10.0f
 
 #define rule1Scale 0.01f
 #define rule2Scale 0.1f
-#define rule3Scale 0.2f
+#define rule3Scale 0.1f
 
-#define maxSpeed 5.0f
+#define maxSpeed 1.0f
 
 /*! Size of the starting area in simulation space. */
 #define scene_scale 100.0f
@@ -159,7 +159,7 @@ void Boids::initSimulation(int N) {
   // LOOK-2.1 computing grid params
   gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
   int halfSideCount = (int)(scene_scale / gridCellWidth) + 1;
-  gridSideCount = 2 * halfSideCount;
+  gridSideCount = 2 * halfSideCount; 
 
   gridCellCount = gridSideCount * gridSideCount * gridSideCount;
   gridInverseCellWidth = 1.0f / gridCellWidth;
@@ -344,6 +344,17 @@ __global__ void kernComputeIndices(int N, int gridResolution,
     // - Label each boid with the index of its grid cell.
     // - Set up a parallel array of integer indices as pointers to the actual
     //   boid data in pos and vel1/vel2
+	int index = threadIdx.x + blockDim.x * blockIdx.x;
+	if (index < N) {
+		indices[index] = index;
+		glm::vec3 displacement = pos[index] - gridMin;
+		displacement = displacement * inverseCellWidth;
+		int3 idx3D;
+		idx3D.x = (int)floorf(displacement.x);
+		idx3D.y = (int)floorf(displacement.y);
+		idx3D.z = (int)floorf(displacement.z);
+		gridIndices[index] = gridIndex3Dto1D(idx3D.x, idx3D.y, idx3D.z, gridResolution);
+	}
 }
 
 // LOOK-2.1 Consider how this could be useful for indicating that a cell
@@ -426,8 +437,14 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	//	 because I can just populate arrayIndices in parallel each time
 	//   because I don't need to keep the sorted arrayIndices buffer from the last step 
 	//   because it's not even right anymore and only serves as a map to information from the last step.
+	//   
   // <-- So what I need is a kernal that populates the arrayIndices, computes its gridLocation,
 	//   and populates the gridIndices buffer from that. 
+	//   Essentially kernComputeIndices
+	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+	float inverseCellWidth = 1.0f / gridCellWidth;
+	kernComputeIndices << <fullBlocksPerGrid, blockSize >> > (numObjects, gridSideCount,
+		gridMinimum, inverseCellWidth, dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
 	// - Unstable key sort using Thrust. A stable sort isn't necessary, but you
   //   are welcome to do a performance comparison.
 	// <-- do all the sorty sort stuff I see in the unitTest
@@ -537,5 +554,52 @@ void Boids::unitTest() {
   cudaFree(dev_intKeys);
   cudaFree(dev_intValues);
   checkCUDAErrorWithLine("cudaFree failed!");
+
+  //test kernComputeIndices
+  N = 3;
+  int sideCount = 10;
+  glm::vec3 minimum = glm::vec3(-5.0f, -5.0f, -5.0f);
+  float inverseCellWidth = 1.0f;
+  glm::vec3 *dev_dummyPos;
+  int *dev_dummyArrayIndices;
+  int *dev_dummyGridIndices;
+
+  cudaMalloc((void**)&dev_dummyPos, N * sizeof(glm::vec3));
+  checkCUDAErrorWithLine("cudaMalloc dev_dummyPos failed!");
+
+  cudaMalloc((void**)&dev_dummyArrayIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_dummyArrayIndices failed!");
+
+  cudaMalloc((void**)&dev_dummyGridIndices, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_dummyGridIndices failed!");
+
+  glm::vec3 *dummyPos = new glm::vec3[N];
+  dummyPos[0] = glm::vec3(-4.5f, -4.5f, -4.5f);
+  dummyPos[1] = glm::vec3(-3.5f, -4.5f, -4.5f);
+  dummyPos[2] = glm::vec3(0.0f, 0.0f, 0.0f);
+  cudaMemcpy(dev_dummyPos, dummyPos, N * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+  int *dummyArrayIndices = new int[N];
+  int *dummyGridIndices = new int[N];
+
+  kernComputeIndices << <fullBlocksPerGrid, blockSize >> > (N, sideCount,
+	  minimum, inverseCellWidth, dev_dummyPos, dev_dummyArrayIndices, dev_dummyGridIndices);
+
+  cudaMemcpy(dummyArrayIndices, dev_dummyArrayIndices, N * sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(dummyGridIndices, dev_dummyGridIndices, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+  std::cout << "0: " << dummyArrayIndices[0] << "," << dummyGridIndices[0] << std::endl;
+  std::cout << "1: " << dummyArrayIndices[1] << "," << dummyGridIndices[1] << std::endl;
+  std::cout << "2: " << dummyArrayIndices[2] << "," << dummyGridIndices[2] << std::endl;
+
+  delete[] dummyPos;
+  delete[] dummyArrayIndices;
+  delete[] dummyGridIndices;
+
+  cudaFree(dev_dummyPos);
+  cudaFree(dev_dummyArrayIndices);
+  cudaFree(dev_dummyGridIndices);
+  checkCUDAErrorWithLine("cudaFree failed!");
+
+
   return;
 }
