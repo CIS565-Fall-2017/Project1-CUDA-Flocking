@@ -175,10 +175,10 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&dev_particleGridIndices, N * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_particleGridIndices failed!");
 
-  cudaMalloc((void**)&dev_gridCellStartIndices, N * sizeof(int));
+  cudaMalloc((void**)&dev_gridCellStartIndices, gridCellCount * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_gridCellStartIndices failed!");
 
-  cudaMalloc((void**)&dev_gridCellEndIndices, N * sizeof(int));
+  cudaMalloc((void**)&dev_gridCellEndIndices, gridCellCount * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
 
   cudaThreadSynchronize();
@@ -355,17 +355,17 @@ __global__ void kernComputeIndices(int N, int gridResolution,
   glm::vec3 gridMin, float inverseCellWidth,
   glm::vec3 *pos, int *indices, int *gridIndices) {
     // TODO-2.1
-    // - Label each boid with the index of its grid cell.
-    // - Set up a parallel array of integer indices as pointers to the actual
-    //   boid data in pos and vel1/vel2
-
   int index = threadIdx.x + (blockIdx.x * blockDim.x);
   if (index >= N) {
     return;
   }
 
+  // - Label each boid with the index of its grid cell.
   glm::ivec3 currBoidPos = (pos[index] - gridMin) * inverseCellWidth;
   gridIndices[index] = gridIndex3Dto1D(currBoidPos.x, currBoidPos.y, currBoidPos.z, gridResolution);
+  
+  // - Set up a parallel array of integer indices as pointers to the actual
+  //   boid data in pos and vel1/vel2
   indices[index] = index;
 }
 
@@ -392,8 +392,7 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
   int prev = particleGridIndices[index - 1];
   int curr = particleGridIndices[index];
   if (prev != curr) {
-    gridCellStartIndices[curr] = index;
-    gridCellEndIndices[prev] = index;
+    gridCellEndIndices[prev] = gridCellStartIndices[curr] = index;
   }
 }
 
@@ -415,7 +414,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
   // - Identify which cells may contain neighbors. This isn't always 8.
   glm::ivec3 cellIndex = (pos[index] - gridMin) * inverseCellWidth;
-  cellIndex--;
+  cellIndex = cellIndex - glm::floor(cellIndex);
   cellIndex.x = imax(cellIndex.x, 0.0f);
   cellIndex.y = imax(cellIndex.y, 0.0f);
   cellIndex.z = imax(cellIndex.z, 0.0f);
@@ -458,7 +457,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
               // Rule 3: boids try to match the speed of surrounding boids
               if (dist < rule3Distance) {
-                perceived_velocity += pos[currIndex];
+                perceived_velocity += vel1[currIndex];
                 rule3N++;
               }
             }
