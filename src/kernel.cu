@@ -52,7 +52,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 #define maxSpeed 1.0f
 
 /*! Size of the starting area in simulation space. */
-#define scene_scale 40.0f
+#define scene_scale 100.0f
 
 /***********************************************
 * Kernel state (pointers are device pointers) *
@@ -298,14 +298,13 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 */
 __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   glm::vec3 *vel1, glm::vec3 *vel2) {
-  for (int i = 0; i < N; ++i) {
-    // Compute a new velocity based on pos and vel1
-    glm::vec3 delta_v = computeVelocityChange(N, i, pos, vel1);
-    // Clamp the speed
-    glm::vec3 new_vel = clamp(delta_v + vel1[i], maxSpeed);
-    // Record the new velocity into vel2. Question: why NOT vel1?
-    vel2[i] = new_vel;
-  }
+  int index = threadIdx.x + (blockIdx.x * blockDim.x);
+  // Compute a new velocity based on pos and vel1
+  glm::vec3 delta_v = computeVelocityChange(N, index, pos, vel1);
+  // Clamp the speed
+  glm::vec3 new_vel = clamp(delta_v + vel1[index], maxSpeed);
+  // Record the new velocity into vel2. Question: why NOT vel1?
+  vel2[index] = new_vel;
 }
 
 /**
@@ -386,7 +385,7 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
       int nextGridIndex = particleGridIndices[index+1];
       if (gridIndex != nextGridIndex) {
         gridCellEndIndices[gridIndex] = index;
-	gridCellStartIndices[nextGridIndex] = index+1;
+	    gridCellStartIndices[nextGridIndex] = index+1;
       }
     }
   }
@@ -439,17 +438,6 @@ void Boids::stepSimulationNaive(float dt) {
   glm::vec3 *dev_vel_temp = dev_vel1;
   dev_vel1 = dev_vel2;
   dev_vel2 = dev_vel_temp;
-  // glm::vec3 values[500];
-  // cudaMemcpy(values, dev_pos, sizeof(glm::vec3) * 500, cudaMemcpyDeviceToHost);
-  // std::cout << "step pos values:\n";
-  // for (int i = 0; i < 5; ++i) {
-  //   std::cout << values[i].x << ", " << values[i].y << ", " << values[i].z << "\n";
-  // }
-  // cudaMemcpy(values, dev_vel2, sizeof(glm::vec3) * 500, cudaMemcpyDeviceToHost);
-  // std::cout << "step vel values:\n";
-  // for (int i = 0; i < 5; ++i) {
-  //   std::cout << values[i].x << ", " << values[i].y << ", " << values[i].z << "\n";
-  // }
 }
 
 void Boids::stepSimulationScatteredGrid(float dt) {
