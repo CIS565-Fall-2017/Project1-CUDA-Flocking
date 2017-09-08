@@ -811,18 +811,19 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	checkCUDAErrorWithLine("kernGetCoherentPosVel failed!");
 
   // - Perform velocity updates using neighbor search
-  // Update Velocity
+	// Update Velocity
 	kernUpdateVelNeighborSearchCoherent << <fullBlocksPerGrid, blockSize >> >(	numObjects, gridSideCount, gridMinimum,
 																				gridInverseCellWidth, gridCellWidth,
 																				dev_gridCellStartIndices, dev_gridCellEndIndices,
-																				dev_pos, dev_vel1, dev_vel2);
+																				coherentPos, coherentVel, dev_vel2);
 	checkCUDAErrorWithLine("kernUpdateVelNeighborSearchScattered failed!");
 	
   // - Update positions
-	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel1);
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, coherentPos, dev_vel1);
 	checkCUDAErrorWithLine("kernUpdatePos failed!");
 
   // - Ping-pong buffers as needed. THIS MAY BE DIFFERENT FROM BEFORE.
+	std::swap(dev_pos, coherentPos);
 	std::swap(dev_vel1, dev_vel2);
 }
 
@@ -836,6 +837,8 @@ void Boids::endSimulation() {
 	cudaFree(dev_particleGridIndices);
 	cudaFree(dev_gridCellStartIndices);
 	cudaFree(dev_gridCellEndIndices);
+	cudaFree(coherentPos);
+	cudaFree(coherentVel);
 }
 
 void Boids::unitTest() {
