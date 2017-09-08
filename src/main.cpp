@@ -13,9 +13,9 @@
 // ================
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
-#define VISUALIZE 0
-#define UNIFORM_GRID 1
-#define COHERENT_GRID 1
+#define VISUALIZE 1
+#define UNIFORM_GRID 0
+#define COHERENT_GRID 0
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
 const int N_FOR_VIS = 5000;
@@ -183,6 +183,16 @@ void initShaders(GLuint * program) {
     }
   }
 
+//-------------------------------------------
+//These are variables for testing 
+//  1. the average runtime of simulation step
+//  2. the average fps
+int ct = 0;
+float mileseconds = 0;
+int ctfps = 0;
+float avgfps = 0;
+//-------------------------------------------
+
   //====================================
   // Main loop
   //====================================
@@ -198,6 +208,14 @@ void initShaders(GLuint * program) {
     cudaGLMapBufferObject((void**)&dptrVertPositions, boidVBO_positions);
     cudaGLMapBufferObject((void**)&dptrVertVelocities, boidVBO_velocities);
 
+	//-----cuda event for testing runtime-----
+	//  1.create and record
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start);
+	//----------------------------------------
+
     // execute the kernel
     #if UNIFORM_GRID && COHERENT_GRID
     Boids::stepSimulationCoherentGrid(DT);
@@ -207,12 +225,31 @@ void initShaders(GLuint * program) {
 	Boids::stepSimulationNaive(DT);
     #endif
 
+	//-----cuda event for testing runtime-----
+	//  2.record and compute
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float ms;
+	cudaEventElapsedTime(&ms, start, stop);
+	//----------------------------------------
+
     #if VISUALIZE
     Boids::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
     #endif
     // unmap buffer object
     cudaGLUnmapBufferObject(boidVBO_positions);
     cudaGLUnmapBufferObject(boidVBO_velocities);
+
+	//-----compute and print the average runtime in first 1000 updates-----
+	++ct;
+	if (ct < 1000)
+		mileseconds += ms;
+	if (ct == 1000) 
+	{
+		mileseconds /= 1000.0;
+		std::cout << "mileseconds: " << mileseconds <<" ms"<< std::endl;
+	}
+	//----------------------------------------------------------------------
   }
 
   void mainLoop() {
@@ -236,6 +273,17 @@ void initShaders(GLuint * program) {
       }
 
       runCUDA();
+
+	  //-----compute and print the average fps in first 1000 updates-----
+	  ++ctfps;
+	  if (ctfps < 1000)
+		  avgfps += fps;
+	  if (ctfps == 1000)
+	  {
+		  avgfps /= 1000.0;
+		  std::cout << "average fps: " << avgfps << std::endl;
+	  }
+	  //-----------------------------------------------------------------
 
       std::ostringstream ss;
       ss << "[";
