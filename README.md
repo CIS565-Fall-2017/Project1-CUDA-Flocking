@@ -14,6 +14,6 @@ anything here that you don't want to share with the world.)
 ![](images/NumOfBoids.png)
 
 <p align="center">
-  <img width="460" height="300" src=![](images/BlockSize.png)>
+  <img src="images/BlockSize.png">
 </p>
 
