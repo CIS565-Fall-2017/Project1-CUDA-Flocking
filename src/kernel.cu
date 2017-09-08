@@ -717,7 +717,7 @@ void Boids::stepSimulationNaive(float dt) {
 	// Use vel1 because kernels can't assume sequential data passing. 
 	// The CPU just sends this stuff to the GPU saying do this function and since
 	// we're swapping buffers we are always using the same slot so to speak.
-	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel1);
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel2);
 	// vel2 gave me grey stuff. it was not delicious. i asked the dishes.
 	//kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel2);
 	checkCUDAErrorWithLine("kernUpdatePos failed!");
@@ -758,7 +758,7 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	checkCUDAErrorWithLine("kernUpdateVelNeighborSearchScattered failed!");
 
   // - Update positions
-	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel1);
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel2);
 	checkCUDAErrorWithLine("kernUpdatePos failed!");
 
   // - Ping-pong buffers as needed
@@ -784,6 +784,9 @@ __global__ void kernGetCoherentPosVel(int N, int *particleArrayIndices, glm::vec
 void Boids::stepSimulationCoherentGrid(float dt) {
   // TODO-2.3 - start by copying Boids::stepSimulationNaiveGrid
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+
+	kernResetIntBuffer << <fullBlocksPerGrid, blockSize >> > (gridCellCount, dev_gridCellStartIndices, -1);
+	kernResetIntBuffer << <fullBlocksPerGrid, blockSize >> > (gridCellCount, dev_gridCellEndIndices, -1);
 
   // Uniform Grid Neighbor search using Thrust sort on cell-coherent data.
   // In Parallel:
@@ -819,7 +822,7 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	checkCUDAErrorWithLine("kernUpdateVelNeighborSearchScattered failed!");
 	
   // - Update positions
-	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, coherentPos, dev_vel1);
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, coherentPos, dev_vel2);
 	checkCUDAErrorWithLine("kernUpdatePos failed!");
 
   // - Ping-pong buffers as needed. THIS MAY BE DIFFERENT FROM BEFORE.
