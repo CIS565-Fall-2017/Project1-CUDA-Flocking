@@ -439,8 +439,8 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int gridResolutionSquared = gridResolution * gridResolution;
 	int numCells = gridResolutionSquared * gridResolution;
 	int x = (boidCellPosition.x - gridX > 0.5f) ? 1 : -1;
-	int y = (boidCellPosition.y - gridY > 0.5f) ? (gridResolution) : (-gridResolution);
-	int z = (boidCellPosition.z - gridZ > 0.5f) ? (gridResolutionSquared) : (-gridResolutionSquared);
+	int y = (boidCellPosition.y - gridY > 0.5f) ? 1 : -1;
+	int z = (boidCellPosition.z - gridZ > 0.5f) ? 1 : -1;
 
 	glm::vec3 perceivedCenter = glm::vec3(0.0f, 0.0f, 0.0f);
 	int rule1Neighbors = 0;
@@ -448,38 +448,43 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	glm::vec3 perceivedVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
 	int rule3Neighbors = 0;
 	for (int k = 0; k < 2; k++) {
+		int zNeighbor = gridZ + (k * z);
+		if (zNeighbor >= gridResolution || zNeighbor < 0) continue;
 		for (int j = 0; j < 2; j++) {
+			int yNeighbor = gridY + (j * y);
+			if (yNeighbor >= gridResolution || yNeighbor < 0) continue;
 			for (int i = 0; i < 2; i++) {
-				int gridCell = gridIndex + (i * x) + (j * y) + (k * z);
-				if (gridCell >= 0 && gridCell < numCells) {
-					// - For each cell, read the start/end indices in the boid pointer array.
-					int startIndex = gridCellStartIndices[gridCell];
-					int endIndex = gridCellEndIndices[gridCell];
-					// - Access each boid in the cell and compute velocity change from
-					for (int l = startIndex; l <= endIndex; l++) {
-						int neighbor = particleArrayIndices[l];
+				int xNeighbor = gridX + (i * x);
+				if (xNeighbor >= gridResolution || xNeighbor < 0) continue;
 
-						if (neighbor != boidIndex) {
-							//   the boids rules, if this boid is within the neighborhood distance.
-							glm::vec3 posNeighbor = pos[neighbor];
-							float distance = glm::distance(posNeighbor, posBoid);
+				int gridCell = gridIndex3Dto1D(xNeighbor, yNeighbor, zNeighbor, gridResolution);
+				// - For each cell, read the start/end indices in the boid pointer array.
+				int startIndex = gridCellStartIndices[gridCell];
+				int endIndex = gridCellEndIndices[gridCell];
+				// - Access each boid in the cell and compute velocity change from
+				for (int l = startIndex; l <= endIndex; l++) {
+					int neighbor = particleArrayIndices[l];
 
-							// Rule 1
-							if (distance < rule1Distance) {
-								perceivedCenter += posNeighbor;
-								rule1Neighbors++;
-							}
+					if (neighbor != boidIndex) {
+						//   the boids rules, if this boid is within the neighborhood distance.
+						glm::vec3 posNeighbor = pos[neighbor];
+						float distance = glm::distance(posNeighbor, posBoid);
 
-							// Rule 2
-							if (distance < rule2Distance) {
-								c -= (posNeighbor - posBoid);
-							}
+						// Rule 1
+						if (distance < rule1Distance) {
+							perceivedCenter += posNeighbor;
+							rule1Neighbors++;
+						}
 
-							// Rule 3
-							if (distance < rule3Distance) {
-								perceivedVelocity += vel1[neighbor];
-								rule3Neighbors++;
-							}
+						// Rule 2
+						if (distance < rule2Distance) {
+							c -= (posNeighbor - posBoid);
+						}
+
+						// Rule 3
+						if (distance < rule3Distance) {
+							perceivedVelocity += vel1[neighbor];
+							rule3Neighbors++;
 						}
 					}
 				}
@@ -545,8 +550,8 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	int gridResolutionSquared = gridResolution * gridResolution;
 	int numCells = gridResolutionSquared * gridResolution;
 	int x = (boidCellPosition.x - gridX > 0.5f) ? 1 : -1;
-	int y = (boidCellPosition.y - gridY > 0.5f) ? (gridResolution) : (-gridResolution);
-	int z = (boidCellPosition.z - gridZ > 0.5f) ? (gridResolutionSquared) : (-gridResolutionSquared);
+	int y = (boidCellPosition.y - gridY > 0.5f) ? 1 : -1;
+	int z = (boidCellPosition.z - gridZ > 0.5f) ? 1 : -1;
 
 	glm::vec3 perceivedCenter = glm::vec3(0.0f, 0.0f, 0.0f);
 	int rule1Neighbors = 0;
@@ -554,39 +559,44 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	glm::vec3 perceivedVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
 	int rule3Neighbors = 0;
 	for (int k = 0; k < 2; k++) {
+		int zNeighbor = gridZ + (k * z);
+		if (zNeighbor >= gridResolution || zNeighbor < 0) continue;
 		for (int j = 0; j < 2; j++) {
+			int yNeighbor = gridY + (j * y);
+			if (yNeighbor >= gridResolution || yNeighbor < 0) continue;
 			for (int i = 0; i < 2; i++) {
-				int gridCell = gridIndex + (i * x) + (j * y) + (k * z);
-				if (gridCell >= 0 && gridCell < numCells) {
-					// - For each cell, read the start/end indices in the boid pointer array.
-					//   DIFFERENCE: For best results, consider what order the cells should be
-					//   checked in to maximize the memory benefits of reordering the boids data.
-					int startIndex = gridCellStartIndices[gridCell];
-					int endIndex = gridCellEndIndices[gridCell];
-					// - Access each boid in the cell and compute velocity change from
-					for (int neighbor = startIndex; neighbor <= endIndex; neighbor++) {
+				int xNeighbor = gridX + (i * x);
+				if (xNeighbor >= gridResolution || xNeighbor < 0) continue;
 
-						if (neighbor != iSelf) {
-							//   the boids rules, if this boid is within the neighborhood distance.
-							glm::vec3 posNeighbor = pos[neighbor];
-							float distance = glm::distance(posNeighbor, posBoid);
+				int gridCell = gridIndex3Dto1D(xNeighbor, yNeighbor, zNeighbor, gridResolution);
+				// - For each cell, read the start/end indices in the boid pointer array.
+				//   DIFFERENCE: For best results, consider what order the cells should be
+				//   checked in to maximize the memory benefits of reordering the boids data.
+				int startIndex = gridCellStartIndices[gridCell];
+				int endIndex = gridCellEndIndices[gridCell];
+				// - Access each boid in the cell and compute velocity change from
+				for (int neighbor = startIndex; neighbor <= endIndex; neighbor++) {
 
-							// Rule 1
-							if (distance < rule1Distance) {
-								perceivedCenter += posNeighbor;
-								rule1Neighbors++;
-							}
+					if (neighbor != iSelf) {
+						//   the boids rules, if this boid is within the neighborhood distance.
+						glm::vec3 posNeighbor = pos[neighbor];
+						float distance = glm::distance(posNeighbor, posBoid);
 
-							// Rule 2
-							if (distance < rule2Distance) {
-								c -= (posNeighbor - posBoid);
-							}
+						// Rule 1
+						if (distance < rule1Distance) {
+							perceivedCenter += posNeighbor;
+							rule1Neighbors++;
+						}
 
-							// Rule 3
-							if (distance < rule3Distance) {
-								perceivedVelocity += vel1[neighbor];
-								rule3Neighbors++;
-							}
+						// Rule 2
+						if (distance < rule2Distance) {
+							c -= (posNeighbor - posBoid);
+						}
+
+						// Rule 3
+						if (distance < rule3Distance) {
+							perceivedVelocity += vel1[neighbor];
+							rule3Neighbors++;
 						}
 					}
 				}
