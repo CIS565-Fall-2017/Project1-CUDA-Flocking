@@ -329,7 +329,6 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos, glm::vec3 *v
 	glm::vec3 newVel = vel1[index] + computeVelocityChange(N, index, pos, vel1);
 	if (glm::length(newVel) > maxSpeed)
 	{
-		//newVel = glm::clamp(newVel, -maxSpeed, maxSpeed);
 		newVel = glm::normalize(newVel) * maxSpeed;
 	}
 	vel2[index] = newVel;
