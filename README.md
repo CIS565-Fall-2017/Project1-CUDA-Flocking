@@ -4,14 +4,11 @@ Project 1 - Flocking**
 * Josh Lawrence
 * Tested on: Windows 10, i7-7700HQ @ 2.8GHz 16GB, GTX 1060 6GB  Personal
 
-### (TODO: Your README)
-
-
+![](images/gtx1060props.png)
 ![](images/boidsresults.png)
 ![](images/boids50k.gif)
 
 
-GTX 1060 stats:
 
 For each implementation, how does changing the number of boids affect performance? Why do you think this is?
     - For all implementations increaseing the number of boids decreases FPS expoentially. 
@@ -31,4 +28,4 @@ For the coherent uniform grid: did you experience any performance improvements w
     -I did indeed see significant perf improvements but only when the num of boids was very large(50k+). Perhaps for a low number of boids, memory bandwidth and isn't a bottle neck but as the boids get to 50k+ having coherent memory can save a lot of trips to global memory.
 
 Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?
-    - huge dip for 5k and 10k boids on grid scattered, the other two methods had similar perf to the 2x cell width (8 neighbors). Don't really know why it would dip in perf on 5k and 10k
+    - Had a huge dip in FPS for 5k and 10k boids for grid scattered(blue line, bottom right graph), the other two methods had similar perf (actually slightly better) to the 2x cell width (8 neighbors). Don't really know why it would dip in perf on 5k and 10k for gird scattered. As for the slightly better per on the 27 cell version, the 27 cell check is actually a tighter check versus the 2x width 8 cell check. Yes there's more cells but theres less boids to loop through, the 27 cell version is querying a volume of 27 (3x3x3) cubic max neighborhood radius where as the 8 cell version is querying a 64 (4x4x4) cubic max neighborhood radius so there's a lot of boids in the loop of the 8 cell version that are still far away from the main boid and won't be counted. the 27 cell version is a tighter bound and has a higher utilization of the boids in its cells. 

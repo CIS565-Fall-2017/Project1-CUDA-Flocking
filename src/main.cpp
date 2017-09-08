@@ -80,6 +80,31 @@ bool init(int argc, char **argv) {
     return false;
   }
   cudaGetDeviceProperties(&deviceProp, gpuDevice);
+// Print device properties
+    printf("Major revision number:         %d\n",  deviceProp.major);
+    printf("Minor revision number:         %d\n",  deviceProp.minor);
+    printf("Name:                          %s\n",  deviceProp.name);
+    printf("Total global memory:           %u\n",  deviceProp.totalGlobalMem);
+    printf("Total shared memory per block: %u\n",  deviceProp.sharedMemPerBlock);
+    printf("Total shared memory per multiprocessor: %u\n",	   deviceProp.sharedMemPerMultiprocessor);
+    printf("Total registers per block:     %d\n",  deviceProp.regsPerBlock);
+    printf("Total registers per multiprocessor:     %d\n",  deviceProp.regsPerMultiprocessor);
+    printf("Warp size:                     %d\n",  deviceProp.warpSize);
+    printf("Maximum memory pitch:          %u\n",  deviceProp.memPitch);
+    printf("Maximum threads per block:     %d\n",  deviceProp.maxThreadsPerBlock);
+    printf("Maximum threads per multiprocessor:     %d\n",  deviceProp.maxThreadsPerMultiProcessor);
+
+    for (int i = 0; i < 3; ++i) printf("Maximum dimension %d of block:  %d\n", i, deviceProp.maxThreadsDim[i]);
+
+    for (int i = 0; i < 3; ++i) printf("Maximum dimension %d of grid:   %d\n", i, deviceProp.maxGridSize[i]);
+
+    printf("Clock rate:                    %d\n",  deviceProp.clockRate);
+    printf("Total constant memory:         %u\n",  deviceProp.totalConstMem);
+    printf("Texture alignment:             %u\n",  deviceProp.textureAlignment);
+    printf("Concurrent copy and execution: %s\n",  (deviceProp.deviceOverlap ? "Yes" : "No"));
+    printf("Number of multiprocessors:     %d\n",  deviceProp.multiProcessorCount);
+    printf("Kernel execution timeout:      %s\n",  (deviceProp.kernelExecTimeoutEnabled ? "Yes" : "No"));
+
   int major = deviceProp.major;
   int minor = deviceProp.minor;
 
