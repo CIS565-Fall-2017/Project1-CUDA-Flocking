@@ -13,7 +13,7 @@
 // ================
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
-#define VISUALIZE 1
+#define VISUALIZE 0
 #define UNIFORM_GRID 1
 #define COHERENT_GRID 1
 
@@ -186,7 +186,7 @@ void initShaders(GLuint * program) {
   //====================================
   // Main loop
   //====================================
-  void runCUDA() {
+  void runCUDA(double &timeElapsed) {
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not
     // use this buffer
@@ -195,9 +195,15 @@ void initShaders(GLuint * program) {
     float *dptrVertPositions = NULL;
     float *dptrVertVelocities = NULL;
 
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    float ms;
+
     cudaGLMapBufferObject((void**)&dptrVertPositions, boidVBO_positions);
     cudaGLMapBufferObject((void**)&dptrVertVelocities, boidVBO_velocities);
 
+    cudaEventRecord(start);
     // execute the kernel
     #if UNIFORM_GRID && COHERENT_GRID
     Boids::stepSimulationCoherentGrid(DT);
@@ -206,6 +212,11 @@ void initShaders(GLuint * program) {
     #else
     Boids::stepSimulationNaive(DT);
     #endif
+    cudaEventRecord(stop);
+
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&ms, start, stop);
+    timeElapsed += ms;
 
     #if VISUALIZE
     Boids::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
@@ -219,6 +230,8 @@ void initShaders(GLuint * program) {
     double fps = 0;
     double timebase = 0;
     int frame = 0;
+    double timeElapsed = 0;
+    float framesElapsed = 0.f;
 
     Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
                        // your CUDA development setup is ready to go.
@@ -227,6 +240,7 @@ void initShaders(GLuint * program) {
       glfwPollEvents();
 
       frame++;
+      framesElapsed += 1.f;
       double time = glfwGetTime();
 
       if (time - timebase > 1.0) {
@@ -235,7 +249,15 @@ void initShaders(GLuint * program) {
         frame = 0;
       }
 
-      runCUDA();
+      runCUDA(timeElapsed);
+
+      if (timeElapsed >= 1000)
+      {
+        std::cout << "fps: ";
+        std::cout << framesElapsed / (timeElapsed / 1000) << std::endl;
+        framesElapsed = 0;
+        timeElapsed = 0;
+      }
 
       std::ostringstream ss;
       ss << "[";

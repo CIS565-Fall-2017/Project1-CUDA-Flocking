@@ -8,3 +8,20 @@ Project 1 - Flocking**
 
 Include screenshots, analysis, etc. (Remember, this is public, so don't put
 anything here that you don't want to share with the world.)
+
+### Performance Analysis
+
+#### Number of boids vs. performance
+Naive
+- 1000:
+- 2500:
+- 5000:
+- 10000:
+- 20000:
+
+#### Block size vs. performance
+
+#### Coherent vs. scattered uniform grid
+
+#### Varying cell width
+
