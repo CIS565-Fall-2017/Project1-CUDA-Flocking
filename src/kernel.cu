@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cuda.h>
 #include <cmath>
+#include <utility>
 #include <glm/glm.hpp>
 #include "utilityCore.hpp"
 #include "kernel.h"
@@ -41,9 +42,9 @@ void checkCUDAError(const char *msg, int line = -1) {
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
-#define rule1Distance 5.0f
-#define rule2Distance 3.0f
-#define rule3Distance 5.0f
+#define rule1Distance 7.0f
+#define rule2Distance 4.0f
+#define rule3Distance 7.0f
 
 #define rule1Scale 0.01f
 #define rule2Scale 0.1f
@@ -66,7 +67,7 @@ dim3 threadsPerBlock(blockSize);
 // Consider why you would need two velocity buffers in a simulation where each
 // boid cares about its neighbors' velocities.
 // These are called ping-pong buffers.
-glm::vec3 *dev_pos;
+glm::vec3  *dev_pos;
 glm::vec3 *dev_vel1;
 glm::vec3 *dev_vel2;
 
@@ -119,6 +120,7 @@ __host__ __device__ glm::vec3 generateRandomVec3(float time, int index) {
   return glm::vec3((float)unitDistrib(rng), (float)unitDistrib(rng), (float)unitDistrib(rng));
 }
 
+
 /**
 * LOOK-1.2 - This is a basic CUDA kernel.
 * CUDA kernel for generating boids with a specified mass randomly around the star.
@@ -147,9 +149,13 @@ void Boids::initSimulation(int N) {
 
   cudaMalloc((void**)&dev_vel1, N * sizeof(glm::vec3));
   checkCUDAErrorWithLine("cudaMalloc dev_vel1 failed!");
-
+  cudaMemset(dev_vel1, 0.0, N * sizeof(glm::vec3));
+  checkCUDAErrorWithLine("Initializing dev_vel1 failed");
+  
   cudaMalloc((void**)&dev_vel2, N * sizeof(glm::vec3));
   checkCUDAErrorWithLine("cudaMalloc dev_vel2 failed!");
+  cudaMemset(dev_vel2, 0.0, N * sizeof(glm::vec3));
+  checkCUDAErrorWithLine("Initializing dev_vel2 failed");
 
   // LOOK-1.2 - This is a typical CUDA kernel invocation.
   kernGenerateRandomPosArray<<<fullBlocksPerGrid, blockSize>>>(1, numObjects,
@@ -157,18 +163,32 @@ void Boids::initSimulation(int N) {
   checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
 
   // LOOK-2.1 computing grid params
-  gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
-  int halfSideCount = (int)(scene_scale / gridCellWidth) + 1;
+  gridCellWidth = 2.0f * std::max({rule1Distance, rule2Distance, 
+			                    rule3Distance});
+  gridInverseCellWidth = 1.0f / gridCellWidth;
+  int halfSideCount = static_cast<int>(scene_scale * gridInverseCellWidth) + 1;
   gridSideCount = 2 * halfSideCount;
 
   gridCellCount = gridSideCount * gridSideCount * gridSideCount;
-  gridInverseCellWidth = 1.0f / gridCellWidth;
   float halfGridWidth = gridCellWidth * halfSideCount;
   gridMinimum.x -= halfGridWidth;
   gridMinimum.y -= halfGridWidth;
   gridMinimum.z -= halfGridWidth;
 
   // TODO-2.1 TODO-2.3 - Allocate additional buffers here.
+  // allocation for 2.1 arrays
+  cudaMalloc(reinterpret_cast<void**>(&dev_particleArrayIndices), numObjects * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleArrayIndices failed!");
+ 
+  cudaMalloc(reinterpret_cast<void**>(&dev_particleGridIndices), numObjects * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleGridIndices failed!");
+  
+  cudaMalloc(reinterpret_cast<void**>(&dev_gridCellStartIndices), gridCellCount * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc devgridCellStartIndices failed!");
+  
+  cudaMalloc(reinterpret_cast<void**>(&dev_gridCellEndIndices), gridCellCount * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc devgridCellEndindices failed!");
+  
   cudaThreadSynchronize();
 }
 
@@ -229,11 +249,78 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 * Compute the new velocity on the body with index `iSelf` due to the `N` boids
 * in the `pos` and `vel` arrays.
 */
-__device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
-  // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-  // Rule 2: boids try to stay a distance d away from each other
+__device__ glm::vec3 rule1(int N, int iSelf, const glm::vec3 * pos, float scale)
+{
+	glm::vec3 pc;
+	int n {0};
+	for ( int i {0}; i < iSelf; ++i){
+           if ( glm::length(pos[i] - pos[iSelf]) < rule1Distance) {
+		pc += pos[i];
+		++n;
+	   }
+	}
+	for( int i {iSelf + 1} ; i < N; ++i){
+           if ( glm::length(pos[i] - pos[iSelf]) < rule1Distance) {
+		pc += pos[i];
+		++n;
+	   }
+	}
+	if ( n == 0)
+	{
+		return glm::vec3(0.f);
+	}
+        pc /= n;
+	return (pc - pos[iSelf]) * scale;
+}
+__device__ glm::vec3 rule2(int N, int iSelf, const glm::vec3 * pos, float scale)
+{
+	glm::vec3 c{ 0.f };
+	for ( int i {0}; i < iSelf; ++i){
+           if ( glm::length(pos[i] - pos[iSelf]) < rule2Distance) {
+		c -= pos[i]  - pos[iSelf];
+	   }
+	}
+	for( int i {iSelf + 1}; i < N; ++i){
+           if ( glm::length(pos[i] - pos[iSelf]) < rule2Distance) {
+		c -= pos[i] - pos[iSelf];
+	   }
+	}
+	return c * scale;
+}
+__device__ glm::vec3 rule3(int N, int iSelf, const glm::vec3 * pos,
+	                                    const glm::vec3 *vel, float scale)
+{
+	glm::vec3 vsum{ 0.0f };
+	int n{0};
+	for ( int i {0}; i < iSelf; ++i){
+           if ( glm::length(pos[i] - pos[iSelf]) < rule3Distance) {
+					vsum += vel[i];
+					++n;
+	       }
+	}
+	for( int i {iSelf + 1} ; i < N; ++i){
+           if ( glm::length(pos[i] - pos[iSelf]) < rule3Distance) {
+					vsum += vel[i];
+					++n;
+	   }
+	}
+        if (n != 0) {
+		vsum *= scale / n;
+	}
+	return vsum;
+}
+__device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos,
+	const glm::vec3 *vel) 
+{
+  // Rule 1: boids fly towards their local pe:rceived center of mass, which excludes themselves
+	// move towards the average
+   glm::vec3 v { rule1(N, iSelf, pos,  rule1Scale)};
+   // keep a boids apart
+  //Rule 2: boids try to stay a distance d away from each other
+   v += rule2(N, iSelf, pos,  rule2Scale);
   // Rule 3: boids try to match the speed of surrounding boids
-  return glm::vec3(0.0f, 0.0f, 0.0f);
+   v += rule3(N, iSelf, pos, vel, rule3Scale);
+  return v;
 }
 
 /**
@@ -242,7 +329,16 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 */
 __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   glm::vec3 *vel1, glm::vec3 *vel2) {
-  // Compute a new velocity based on pos and vel1
+	 int boid = threadIdx.x + blockIdx.x * blockDim.x;
+	 if (boid >= N) {
+	         return;
+	 }
+	 glm::vec3 v3{ computeVelocityChange(N, boid, pos, vel1)};
+	 vel2[boid] = vel1[boid] + v3;
+	 float length = glm::length(vel2[boid]);
+	 if (length  > maxSpeed){
+		 vel2[boid] =  maxSpeed/length * vel2[boid];
+	 }
   // Clamp the speed
   // Record the new velocity into vel2. Question: why NOT vel1?
 }
@@ -347,6 +443,13 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 * Step the entire N-body simulation by `dt` seconds.
 */
 void Boids::stepSimulationNaive(float dt) {
+
+     dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+     kernUpdateVelocityBruteForce<<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_pos,
+			dev_vel1, dev_vel2);
+    kernUpdatePos<<<fullBlocksPerGrid, blockSize>>>(numObjects, dt, dev_pos, dev_vel2);
+    std::swap(dev_vel1, dev_vel2);
+    cudaDeviceSynchronize();
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
   // TODO-1.2 ping-pong the velocity buffers
 }
@@ -390,6 +493,7 @@ void Boids::endSimulation() {
   cudaFree(dev_pos);
 
   // TODO-2.1 TODO-2.3 - Free any additional buffers here.
+  cudaFree(dev_gridCellStartIndices);
 }
 
 void Boids::unitTest() {
