@@ -41,8 +41,8 @@ void checkCUDAError(const char *msg, int line = -1) {
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
-#define rule1Distance 10.0f
-#define rule2Distance 6.0f
+#define rule1Distance 5.0f
+#define rule2Distance 3.0f
 #define rule3Distance 10.0f
 
 #define rule1Scale 0.01f
@@ -350,11 +350,10 @@ __device__ int3 positionToGridIndices(glm::vec3 gridMin, glm::vec3 position, flo
 	return idx3D;
 }
 
-__device__ glm::vec3 computeVelContributionFromGridCellScattered(int iSelf, int gridCellIndex, glm::vec3 selfPos,
+__device__ glm::vec3 computeVelContributionFromGridCellScattered(glm::vec3 &finalVel, int iSelf, int gridCellIndex, glm::vec3 selfPos,
 	int *gridCellStartIndices, int *gridCellEndIndices, int *particleArrayIndices,
 	glm::vec3 *pos, glm::vec3 *vel) {
 
-	glm::vec3 finalVel;
 	glm::vec3 perceivedCenter;
 	glm::vec3 avoidanceVector;
 	glm::vec3 perceivedVel;
@@ -476,9 +475,9 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 		// Create a vector of the form (+/-1, +/-1, +/-1) that describes which octant 
 		// of the cell the boid is in.
 		float halfCellWidth = cellWidth / 2.0f;
-		glm::vec3 octantVector = glm::vec3(gridIndices.x + halfCellWidth, 
-			gridIndices.y + halfCellWidth, 
-			gridIndices.z + halfCellWidth);
+		glm::vec3 octantVector = glm::vec3(gridMin.x + gridIndices.x * cellWidth + halfCellWidth, 
+			gridMin.z + gridIndices.y * cellWidth + halfCellWidth,
+			gridMin.x + gridIndices.z * cellWidth + halfCellWidth);
 		octantVector = selfPos - octantVector;
 		octantVector.x = scaleToOneWithSign(octantVector.x);
 		octantVector.y = scaleToOneWithSign(octantVector.y);
@@ -487,25 +486,57 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 		// Hold a gridCellVector. Dot producting this vector
 		// with the octantVector should tell us whether or not you should check 
 		// in a given cell.
-		glm::vec3 gridCellVector;
 		int gridCellIndex; 
-		for (int z = -1; z < 2; z++) {
-			for (int y = -1; y < 2; y++) {
-				for (int x = -1; x < 2; x++) {
-					gridCellIndex = gridIndex3Dto1D(gridIndices.x + x, gridIndices.y + y, gridIndices.z + z, gridResolution);
-					if (gridCellIndex >= 0 && gridCellIndex < N) {
-						gridCellVector.x = (float)x;
-						gridCellVector.y = (float)y;
-						gridCellVector.z = (float)z;
-						if ((glm::dot(octantVector, gridCellVector) > 0.5f) || (x == y && y == z)) {
-							finalVel += computeVelContributionFromGridCellScattered(index, gridCellIndex, selfPos,
-								gridCellStartIndices, gridCellEndIndices, particleArrayIndices,
-								pos, vel1);
+		int3 gridCellIndex3D;
+		// Velocity Calculation Variables
+		glm::vec3 perceivedCenter; glm::vec3 avoidanceVector;
+		glm::vec3 perceivedVel; glm::vec3 boidPos;
+		int boidIndex; int nearBoid1Count = 0; int nearBoid3Count = 0;
+		float distance;
+		for (int z = 0; z < 2; z++) {
+			for (int y = 0; y < 2; y++) {
+				for (int x = 0; x < 2; x++) {
+					gridCellIndex3D.x = gridIndices.x + x * octantVector.x;
+					gridCellIndex3D.y = gridIndices.y + y * octantVector.y;
+					gridCellIndex3D.z = gridIndices.z + z * octantVector.z;
+					if (gridCellIndex3D.x >= 0 && gridCellIndex3D.x < gridResolution &&
+						gridCellIndex3D.y >= 0 && gridCellIndex3D.y < gridResolution &&
+						gridCellIndex3D.z >= 0 && gridCellIndex3D.z < gridResolution) {
+						gridCellIndex = gridIndex3Dto1D(gridCellIndex3D.x,
+							gridCellIndex3D.y,
+							gridCellIndex3D.z, gridResolution);
+						for (int i = gridCellStartIndices[gridCellIndex]; i < gridCellEndIndices[gridCellIndex]; i++) {
+							boidIndex = particleArrayIndices[i];
+							boidPos = pos[boidIndex];
+							distance = glm::length(selfPos - boidPos);
+							if (i != index) {
+								// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+								if (distance < rule1Distance) {
+									perceivedCenter += boidPos;
+									nearBoid1Count++;
+								}
+								// Rule 2: boids try to stay a distance d away from each other
+								if (distance < rule2Distance) {
+									avoidanceVector -= (boidPos - selfPos);
+								}
+								// Rule 3: boids try to match the speed of surrounding boids
+								if (distance < rule3Distance) {
+									perceivedVel += vel1[boidIndex];
+									nearBoid3Count++;
+								}
+							}
 						}
 					}
 				}
 			}
 		}
+
+		perceivedCenter = perceivedCenter / (float)imax(1, nearBoid1Count);
+		perceivedVel = perceivedVel / (float)imax(1, nearBoid3Count);
+
+		finalVel = (perceivedCenter - selfPos) * rule1Scale;
+		finalVel += avoidanceVector * rule2Scale;
+		finalVel += perceivedVel * rule3Scale;
 
 		finalVel = vel1[index] + finalVel;
 		if (glm::length(finalVel) > maxSpeed) {
