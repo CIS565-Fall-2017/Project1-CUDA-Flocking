@@ -544,6 +544,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	// - Identify the grid cell that this particle is in
 	glm::vec3 finalVel;
 	if (index < N) {
+		
 		glm::vec3 selfPos = pos[index];
 		int3 gridIndices = positionToGridIndices(gridMin, selfPos, inverseCellWidth);
 
@@ -566,6 +567,8 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 		glm::vec3 perceivedVel; glm::vec3 boidPos;
 		int nearBoid1Count = 0; int nearBoid3Count = 0;
 		float distance;
+		
+		
 		for (int z = 0; z < 2; z++) {
 			for (int y = 0; y < 2; y++) {
 				for (int x = 0; x < 2; x++) {
@@ -602,6 +605,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 				}
 			}
 		}
+		
 		if (nearBoid1Count > 0) {
 			perceivedCenter = perceivedCenter / (float)nearBoid1Count;
 			finalVel += (perceivedCenter - selfPos) * rule1Scale;
@@ -611,7 +615,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 			finalVel += perceivedVel * rule3Scale;
 		}
 		finalVel += avoidanceVector * rule2Scale;
-
+		
 		finalVel = vel1[index] + finalVel;
 		if (glm::length(finalVel) > maxSpeed) {
 			finalVel = glm::normalize(finalVel) * maxSpeed;
@@ -672,6 +676,7 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // - Update positions
 	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_pos, dev_vel1);
   // - Ping-pong buffers as needed
+
 	glm::vec3 *tmpVel = dev_vel1;
 	dev_vel1 = dev_vel2;
 	dev_vel2 = tmpVel;
