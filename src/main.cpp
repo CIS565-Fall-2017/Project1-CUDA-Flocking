@@ -7,25 +7,30 @@
 */
 
 #include "main.hpp"
-
+#include <fstream>
 // ================
 // Configuration
 // ================
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
-#define UNIFORM_GRID 0
+#define UNIFORM_GRID 1
 #define COHERENT_GRID 0
+#define MEASURE_KERNEL_TIME 0
+#define BENCHMARK 0
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 5000;
+const int N_FOR_VIS = 50000;
 const float DT = 0.2f;
+
+float ktime = -1;
+std::ofstream outputFile;
 
 /**
 * C main function.
 */
 int main(int argc, char* argv[]) {
-  projectName = "565 CUDA Intro: Boids";
+  projectName = "Ziyu Li - Project 1 - CUDA: Boids";
 
   if (init(argc, argv)) {
     mainLoop();
@@ -66,6 +71,9 @@ bool init(int argc, char **argv) {
   std::ostringstream ss;
   ss << projectName << " [SM " << major << "." << minor << " " << deviceProp.name << "]";
   deviceName = ss.str();
+
+  // Write Benchmark to file
+  outputFile.open("benchmark.txt");
 
   // Window setup stuff
   glfwSetErrorCallback(errorCallback);
@@ -198,6 +206,14 @@ void initShaders(GLuint * program) {
     cudaGLMapBufferObject((void**)&dptrVertPositions, boidVBO_positions);
     cudaGLMapBufferObject((void**)&dptrVertVelocities, boidVBO_velocities);
 
+#if MEASURE_KERNEL_TIME
+	ktime = 0.0f;
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start, 0);
+#endif
+
     // execute the kernel
     #if UNIFORM_GRID && COHERENT_GRID
     Boids::stepSimulationCoherentGrid(DT);
@@ -210,6 +226,15 @@ void initShaders(GLuint * program) {
     #if VISUALIZE
     Boids::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
     #endif
+
+#if MEASURE_KERNEL_TIME
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&ktime, start, stop);
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+#endif
+
     // unmap buffer object
     cudaGLUnmapBufferObject(boidVBO_positions);
     cudaGLUnmapBufferObject(boidVBO_velocities);
@@ -220,6 +245,10 @@ void initShaders(GLuint * program) {
     double timebase = 0;
     int frame = 0;
 
+	double avgKernelTime = 0; // Kernel Time Measurement
+	double sumKernelTime = 0; 
+	int oldtime = -1;
+
     Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
                        // your CUDA development setup is ready to go.
 
@@ -228,20 +257,37 @@ void initShaders(GLuint * program) {
 
       frame++;
       double time = glfwGetTime();
+	  
+	  sumKernelTime += (double)ktime;
 
       if (time - timebase > 1.0) {
+		avgKernelTime = sumKernelTime / frame;
         fps = frame / (time - timebase);
         timebase = time;
         frame = 0;
+		sumKernelTime = 0;
       }
 
+#if BENCHMARK
+	  if (oldtime != (int)time) {
+		  if ((int)time) {
+			  //outputFile << (int)time << "," << fps << ", " << avgKernelTime << std::endl;
+			  outputFile << fps << std::endl;
+		  }
+		  else {
+			  //outputFile << "Run" << "," << "FPS" << ", " << "Kernel Time" << std::endl;
+		  }
+		  oldtime++;
+	  }
+#endif
       runCUDA();
 
       std::ostringstream ss;
       ss << "[";
-      ss.precision(1);
+      ss.precision(3);
       ss << std::fixed << fps;
-      ss << " fps] " << deviceName;
+      ss << " fps] ";
+	  ss << " [kernel time: " << avgKernelTime << "ms] " << deviceName;
       glfwSetWindowTitle(window, ss.str().c_str());
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
