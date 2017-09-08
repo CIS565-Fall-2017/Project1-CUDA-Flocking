@@ -4,11 +4,10 @@ Project 1 - Flocking**
 * Sarah Forcier
 * Tested on: GeForce GTX 1070
 
-### Screen Capture
-
 | 100,000 boids | 5,000 boids | 
 | ------------- | ----------- |
 | ![](flocking.gif) | ![](flocking1.gif) |
+| 720 FPS | 620 FPS |
 
 ### Performance Analysis
 
