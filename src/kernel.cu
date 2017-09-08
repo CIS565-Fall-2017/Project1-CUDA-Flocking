@@ -37,7 +37,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 *****************/
 
 /*! Block size used for CUDA kernel launch. */
-#define blockSize 128
+#define blockSize 512
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
@@ -836,7 +836,8 @@ __device__ glm::vec3 UpdateVelocity8Grids(int N, int index, int boidIndex, const
 	{
 		perceivedVelocity /= count3;
 	}
-	glm::vec3 finalSpeed = currentVelocity + (perceivedCenter - currentPosition)*rule1Scale + vectorC*rule2Scale + perceivedVelocity*rule3Scale;
+
+ 	glm::vec3 finalSpeed = currentVelocity + (perceivedCenter - currentPosition)*rule1Scale + vectorC*rule2Scale + perceivedVelocity*rule3Scale;
 	return finalSpeed;
 }
 
@@ -862,13 +863,13 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	}
 	int boidIndex = particleArrayIndices[index];
 
-	//glm::vec3 updatedVel = newUpdateVelocity(N,index,boidIndex, pos, vel1, 
-	//	particleArrayIndices,particleGridIndices,gridCellStartIndices,gridCellEndIndices,
-	//	gridCellIndex,gridSideCount,gridCellWidth);
+	glm::vec3 updatedVel = newUpdateVelocity(N,index,boidIndex, pos, vel1, 
+		particleArrayIndices,particleGridIndices,gridCellStartIndices,gridCellEndIndices,
+		gridCellIndex,gridSideCount,gridCellWidth);
 
-	glm::vec3 updatedVel = UpdateVelocity8Grids(N, index, boidIndex, pos, vel1,
-		particleArrayIndices, particleGridIndices, gridCellStartIndices, gridCellEndIndices,
-		gridCellIndex, gridSideCount, gridCellWidth, gridMin);
+	//glm::vec3 updatedVel = UpdateVelocity8Grids(N, index, boidIndex, pos, vel1,
+	//	particleArrayIndices, particleGridIndices, gridCellStartIndices, gridCellEndIndices,
+	//	gridCellIndex, gridSideCount, gridCellWidth, gridMin);
 		
 	if (glm::length(updatedVel) > maxSpeed)
 	{

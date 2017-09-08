@@ -56,21 +56,28 @@ Since the structure is super complicated, I think a graph would be a better illu
 
 26 Neighbors Searching 
 
-![](https://i.imgur.com/x6EQG26.jpg)
-
-
-
-
-## Performance Analysis ##
+![](https://i.imgur.com/cWwECwF.jpg)
 
 # 3. Cutting out the middleman #
 
 ## Structure ##
+ 
+The structure of Coherent searching are basically the same as the scatter searching. But the difference is that we need a procedure that sort the data of dev_pos and also dev_vel1 according to the index of devBoidIndex. Then we can use the rearrangeed date to calculate the velocity and position update. Finally, copy the memory of dev_vel2 to dev_vel1, and rearranged position value to dev_pos.
 
-## Result ##
 
+# 4. Performance Analysis #
 
+*All the performance analysis are based on Release mode*
 
-## Performance Analysis ##
+5000 Boids
 
-# 4. Q&A and Summary #
+![](https://i.imgur.com/DKviHsM.jpg)
+
+50000 Boids
+
+![](https://i.imgur.com/lT69fJI.jpg)
+
+Block Size 512, 5000 boids
+
+![](https://i.imgur.com/I0T99UV.jpg)
+
