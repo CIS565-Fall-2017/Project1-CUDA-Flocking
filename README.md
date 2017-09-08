@@ -7,7 +7,7 @@ Project 1 - Flocking**
 ### Overview
 
 ![](images/boids.gif)
-###### Run on GT750M with 8192 boids
+###### (Run on GT750M with 8192 boids)
 
 This project was a basic introduction to CUDA kernels, how to use them, and how to analyze their performance. This was done by implementing the Reynolds Boids algorithm in parallel on the GPU. 
 
