@@ -12,13 +12,14 @@
 // Configuration
 // ================
 
-// LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
+//W LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
-#define UNIFORM_GRID 0
-#define COHERENT_GRID 0
+#define UNIFORM_GRID 1
+#define COHERENT_GRID 1
 
+#define CTTOTAL 1200
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 5000;
+const int N_FOR_VIS = 50000;
 const float DT = 0.2f;
 
 /**
@@ -186,19 +187,24 @@ void initShaders(GLuint * program) {
   //====================================
   // Main loop
   //====================================
+int cudaCount = 0;
+float cudaTimeCount = 0;
   void runCUDA() {
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not
     // use this buffer
 
+	  
     float4 *dptr = NULL;
     float *dptrVertPositions = NULL;
     float *dptrVertVelocities = NULL;
-
     cudaGLMapBufferObject((void**)&dptrVertPositions, boidVBO_positions);
     cudaGLMapBufferObject((void**)&dptrVertVelocities, boidVBO_velocities);
-
-    // execute the kernel
+	// execute the kernel
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start);
     #if UNIFORM_GRID && COHERENT_GRID
     Boids::stepSimulationCoherentGrid(DT);
     #elif UNIFORM_GRID
@@ -213,7 +219,19 @@ void initShaders(GLuint * program) {
     // unmap buffer object
     cudaGLUnmapBufferObject(boidVBO_positions);
     cudaGLUnmapBufferObject(boidVBO_velocities);
-  }
+
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float milliseconds = 0;
+	cudaEventElapsedTime(&milliseconds, start, stop);
+	cudaCount++;
+	cudaTimeCount += milliseconds;
+	if (cudaCount == CTTOTAL)
+		std::cout << "AVG TIME:" << cudaTimeCount / CTTOTAL << std::endl;
+}
+
+  int fpsCount = 0;
+  float fpsTotal = 0;
 
   void mainLoop() {
     double fps = 0;
@@ -236,7 +254,7 @@ void initShaders(GLuint * program) {
       }
 
       runCUDA();
-
+	    
       std::ostringstream ss;
       ss << "[";
       ss.precision(1);
@@ -258,6 +276,10 @@ void initShaders(GLuint * program) {
 
       glfwSwapBuffers(window);
       #endif
+	  fpsCount++;
+	  fpsTotal += fps;
+	  if (fpsCount == CTTOTAL)
+		  std::cout << "AVG FPS :" << fpsTotal / CTTOTAL << std::endl;
     }
     glfwDestroyWindow(window);
     glfwTerminate();
