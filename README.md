@@ -10,6 +10,9 @@ Start the program from release mode and disble the visualization. Next let the p
 
 
 #### Results
+
++ ![](images/1.gif)
+
 **Performance Measurement under block size 128**  (the resutls below are averaged framerate in 30 seconds run)
 
 For my performance measurement, the naive approach is faster than other two spatial accelerated implementation when the number of boids is low (approx. less than 160). But after I increase the boids from 640 to 40960, the advantage of spatial accelerated implementation is much more obvious.
@@ -17,6 +20,8 @@ For my performance measurement, the naive approach is faster than other two spat
 Base on the results, but can see GPU can significantly increase the computational speed. On my benchmark, a delicate implementation on GPU can improve up to approx. 50 times faster than a naive approach.
 
 There is a graph shows the comparison between these three implementation under different number of boids. 
+
++ ![](images/comparision.PNG)
 
  Num of boids   | Naive (fps)  | Scattered (fps)  | coherent (fps) | Max Performance Boost
   ---|---|---|---|---
@@ -34,7 +39,10 @@ There is a graph shows the comparison between these three implementation under d
 This performance measurement compare how block size will affect the performance. And there are three comparison benchmark under different boids size. The graph and results show below:
 
 **1. boids size: 160**
- Block size   | Naive (fps)  | Scattered (fps)  | coherent (fps)
+
++ ![](images/160Boids.PNG)
+
+Block size   | Naive (fps)  | Scattered (fps)  | coherent (fps)
   ---|---|---|---
   64 | 1767| 1285|1273
   128 | 1744|1271|1279
@@ -42,15 +50,21 @@ This performance measurement compare how block size will affect the performance.
  512 | 1763 |1283|1252
  
  **2. boids size: 1.6k**
-  Block size   | Naive (fps)  | Scattered (fps)  | coherent (fps)
+
+ + ![](images/1.6kBoids.PNG)
+
+ Block size   | Naive (fps)  | Scattered (fps)  | coherent (fps)
   ---|---|---|---
   64 | 432| 958|1018
   128 | 430|967|1001
  256 | 429|970|1023
  512 | 429|851|905
  
-  **3. boids size: 16k**
-   Block size   | Naive (fps)  | Scattered (fps)  | coherent (fps)
+ **3. boids size: 16k**
+
+ + ![](images/16kBoids.PNG)
+
+ Block size   | Naive (fps)  | Scattered (fps)  | coherent (fps)
   ---|---|---|---
   64 | 12.60| 253|236
   128 | 12.59|256|275
