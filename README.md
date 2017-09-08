@@ -8,13 +8,13 @@ Project 1 - Flocking**
 
 ![](images/flock.gif)
 
-# Part1. Features
+# Features
 
 * Naive Boids Simulation
 * Scattered uniform grids Boids Simulation
 * Coherent uniform grids Boids Simulation
 
-# Part2. Performance Analysis
+# Performance Analysis
 
 Methods for measuring performance:
 
@@ -69,19 +69,19 @@ The elapse time of step simulation is computed by cudaEvent.
 
 ## Questions and answers
 
-* **For each implementation, how does changing the number of boids affect performance? Why do you think this is?**
+**1) For each implementation, how does changing the number of boids affect performance? Why do you think this is?**
 
 The increasing of the number of boids leads to the decreasing of performance. Since there are more neighbors needed to be check.
 
-* **For each implementation, how does changing the block count and block size affect performance? Why do you think this is?**
+**2) For each implementation, how does changing the block count and block size affect performance? Why do you think this is?**
 
 Changing the block count and block size does not affect performance.
 
-* **For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?**
+**3) For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?**
 
 There are performance improvements in fps and runtime when the number of boids is big. But when the number of boids is small, the coherent uniform grid method does not improve the performance.
 I think it's because when the number of boids is big, neighborhood distance is much smaller than the full simulation space. When the number of boids is small, the neighborhood distance is not such small, and the code length of the coherent uniform grid is longer than naive method.
 
-* **Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
+**4) Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
 
 It will not affect the performance.
