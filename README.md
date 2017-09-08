@@ -4,17 +4,17 @@ Project 1 - Flocking**
 * Yalun Hu
 * Tested on: Windows 10, i7-6700HQ CPU @ 2.60GHz 32GB, GTX 1070 8192MB (Personal computer)
 
-### Flocking
+# Flocking
 
 ![](images/flock.gif)
 
-### Features
+# Features
 
 * Naive Boids Simulation
 * Scattered uniform grids Boids Simulation
 * Coherent uniform grids Boids Simulation
 
-### Performance Analysis
+# Performance Analysis
 
 Methods for measuring performance:
 
@@ -25,7 +25,7 @@ Methods for measuring performance:
 
 ## Performance plots
 
-# Framerate change with increasing # of boids
+### Framerate change with increasing # of boids
 
 * with visualization
 
@@ -39,13 +39,13 @@ Methods for measuring performance:
   <img src="images/fps-boids-nonvisual">
 </p>
 
-# Framerate change with increasing block size
+### Framerate change with increasing block size
 
 <p align="center">
   <img src="images/fps-block-nonvisual.png">
 </p>
 
-# Step simulation time with increasing # of boids
+### Step simulation time with increasing # of boids
 
 * with visualization
 
@@ -59,7 +59,7 @@ Methods for measuring performance:
   <img src="images/time-boids-nonvisual.png">
 </p>
 
-# Step simulation time with increasing block size
+### Step simulation time with increasing block size
 
 <p align="center">
   <img src="images/time-block-nonvisual.png">
