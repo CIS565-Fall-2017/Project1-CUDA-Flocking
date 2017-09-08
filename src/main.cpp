@@ -14,12 +14,32 @@
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
-#define UNIFORM_GRID 0
-#define COHERENT_GRID 0
+#define UNIFORM_GRID 1
+#define COHERENT_GRID 1
+
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 5000;
+const int N_FOR_VIS = 50000;
 const float DT = 0.2f;
+
+//gtx 1060
+//boids vs fps (with vis/without) 
+//			1000		5000		10000		50000		100000		150000
+//naive		780/1860	370/600		218/300		13/11		3/3			1/1
+//grid		193/312		480/790		630/1300	250/400		118/130		50/56
+//coh		x			480/850		650/1530	400/750		275/410		180/260
+
+//blocksize vs fps (50000 boids, without vis)
+//			16			32			64			128			256			512			1024		
+//naive		7			13			13			11			13			13			12
+//grid		330			370			360			350			350			350			350
+//coh		530			730			720			750			750			730			710
+
+//boids vs fps (novis) cellwidth 1x the neighb size
+//			1000		5000		10000		50000		100000		150000
+//naive		2000		600			350			11			3			1
+//grid		220			25			9			400			120			60
+//coh		x			x			x			900			530			330
 
 /**
 * C main function.
@@ -60,11 +80,36 @@ bool init(int argc, char **argv) {
     return false;
   }
   cudaGetDeviceProperties(&deviceProp, gpuDevice);
+// Print device properties
+    printf("Major revision number:         %d\n",  deviceProp.major);
+    printf("Minor revision number:         %d\n",  deviceProp.minor);
+    printf("Name:                          %s\n",  deviceProp.name);
+    printf("Total global memory:           %u\n",  deviceProp.totalGlobalMem);
+    printf("Total shared memory per block: %u\n",  deviceProp.sharedMemPerBlock);
+    printf("Total shared memory per multiprocessor: %u\n",	   deviceProp.sharedMemPerMultiprocessor);
+    printf("Total registers per block:     %d\n",  deviceProp.regsPerBlock);
+    printf("Total registers per multiprocessor:     %d\n",  deviceProp.regsPerMultiprocessor);
+    printf("Warp size:                     %d\n",  deviceProp.warpSize);
+    printf("Maximum memory pitch:          %u\n",  deviceProp.memPitch);
+    printf("Maximum threads per block:     %d\n",  deviceProp.maxThreadsPerBlock);
+    printf("Maximum threads per multiprocessor:     %d\n",  deviceProp.maxThreadsPerMultiProcessor);
+
+    for (int i = 0; i < 3; ++i) printf("Maximum dimension %d of block:  %d\n", i, deviceProp.maxThreadsDim[i]);
+
+    for (int i = 0; i < 3; ++i) printf("Maximum dimension %d of grid:   %d\n", i, deviceProp.maxGridSize[i]);
+
+    printf("Clock rate:                    %d\n",  deviceProp.clockRate);
+    printf("Total constant memory:         %u\n",  deviceProp.totalConstMem);
+    printf("Texture alignment:             %u\n",  deviceProp.textureAlignment);
+    printf("Concurrent copy and execution: %s\n",  (deviceProp.deviceOverlap ? "Yes" : "No"));
+    printf("Number of multiprocessors:     %d\n",  deviceProp.multiProcessorCount);
+    printf("Kernel execution timeout:      %s\n",  (deviceProp.kernelExecTimeoutEnabled ? "Yes" : "No"));
+
   int major = deviceProp.major;
   int minor = deviceProp.minor;
 
   std::ostringstream ss;
-  ss << projectName << " [SM " << major << "." << minor << " " << deviceProp.name << "]";
+  ss << projectName << "Josh Lawrence [SM " << major << "." << minor << " " << deviceProp.name << "]";
   deviceName = ss.str();
 
   // Window setup stuff
@@ -92,6 +137,9 @@ bool init(int argc, char **argv) {
   glfwSetKeyCallback(window, keyCallback);
   glfwSetCursorPosCallback(window, mousePositionCallback);
   glfwSetMouseButtonCallback(window, mouseButtonCallback);
+
+  //turn off v-sync
+  glfwSwapInterval(false);
 
   glewExperimental = GL_TRUE;
   if (glewInit() != GLEW_OK) {
