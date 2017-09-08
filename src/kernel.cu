@@ -169,6 +169,21 @@ void Boids::initSimulation(int N) {
   gridMinimum.z -= halfGridWidth;
 
   // TODO-2.1 TODO-2.3 - Allocate additional buffers here.
+  cudaMalloc((void**)&dev_particleArrayIndices, N * sizeof(glm::vec3 *));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleArrayIndices failed!");
+
+  cudaMalloc((void**)&dev_particleGridIndices, N * sizeof(glm::vec3 *));
+  checkCUDAErrorWithLine("cudaMalloc dev_particleGridIndices failed!");
+
+  cudaMalloc((void**)&dev_gridCellStartIndices, gridCellCount * sizeof(int*));
+  checkCUDAErrorWithLine("cudaMalloc dev_gridCellStartIndices failed!");
+
+  cudaMalloc((void**)&dev_gridCellEndIndices, gridCellCount * sizeof(int*));
+  checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
+
+  dev_thrust_particleArrayIndices = thrust::device_ptr<int>(dev_particleArrayIndices);
+  dev_thrust_particleGridIndices = thrust::device_ptr<int>(dev_particleGridIndices);
+
   cudaThreadSynchronize();
 }
 
@@ -329,12 +344,19 @@ __device__ int gridIndex3Dto1D(int x, int y, int z, int gridResolution) {
 }
 
 __global__ void kernComputeIndices(int N, int gridResolution,
-  glm::vec3 gridMin, float inverseCellWidth,
-  glm::vec3 *pos, int *indices, int *gridIndices) {
-    // TODO-2.1
-    // - Label each boid with the index of its gri000d cell.
-    // - Set up a parallel array of integer indices as pointers to the actual
-    //   boid data in pos and vel1/vel2
+    glm::vec3 gridMin, float inverseCellWidth,
+    glm::vec3 *pos, int *indices, int *gridIndices) {
+  // TODO-2.1
+  // - Label each boid with the index of its grid cell.
+  // - Set up a parallel array of integer indices as pointers to the actual
+  //   boid data in pos and vel1/vel2
+  int i = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (i < N) {
+    indices[i] = i;
+    glm::vec3 abs_pos = (pos[i] - gridMin)*inverseCellWidth;
+    int index = gridIndex3Dto1D((int)abs_pos.x, (int)abs_pos.y, (int)abs_pos.z, gridResolution);
+    gridIndices[i] = index;
+  }
 }
 
 // LOOK-2.1 Consider how this could be useful for indicating that a cell
@@ -352,6 +374,22 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
   // Identify the start point of each cell in the gridIndices array.
   // This is basically a parallel unrolling of a loop that goes
   // "this index doesn't match the one before it, must be a new cell!"
+  int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (index < N) {
+    int gridIndex = particleGridIndices[index];
+    if (index == 0) {
+      gridCellStartIndices[gridIndex] = 0;
+    }
+    if (index == N-1) {
+      gridCellEndIndices[gridIndex] = index;
+    } else {
+      int nextGridIndex = particleGridIndices[index+1];
+      if (gridIndex != nextGridIndex) {
+        gridCellEndIndices[gridIndex] = index;
+	gridCellStartIndices[nextGridIndex] = index+1;
+      }
+    }
+  }
 }
 
 __global__ void kernUpdateVelNeighborSearchScattered(
