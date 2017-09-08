@@ -386,11 +386,8 @@ __global__ void kernComputeIndices(int N, int gridResolution,
 	}
 
 	//go through the boids and determine which grid cell to bin them into
-	glm::vec3 boidPos = glm::round((pos[index] - gridMin) * inverseCellWidth);
-	glm::vec3 _3DGridIndex = boidPos / (float(gridResolution));
-	glm::clamp( _3DGridIndex, glm::vec3(0.0f), glm::vec3(gridResolution-1) );
-
-	gridIndices[index] = gridIndex3Dto1D(_3DGridIndex.x, _3DGridIndex.y, _3DGridIndex.z, gridResolution);;
+	glm::ivec3 boidPos = (pos[index] - gridMin) * inverseCellWidth;
+	gridIndices[index] = gridIndex3Dto1D(boidPos.x, boidPos.y, boidPos.z, gridResolution);
 	indices[index] = index;
 }
 
@@ -452,8 +449,8 @@ __global__ void kernSetCoherentPosVel(int N, int *particleArrayIndices,
 
 	for (int i = gridCellStartIndices[index]; i < gridCellEndIndices[index]; i++)
 	{
-		coherentPos[index] = pos[particleArrayIndices[index]];
-		coherentVel[index] = vel[particleArrayIndices[index]];
+		coherentPos[i] = pos[particleArrayIndices[i]];
+		coherentVel[i] = vel[particleArrayIndices[i]];
 	}
 }
 
@@ -481,10 +478,10 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	//find boid position
 	//then use that position to determine its place in the the uniform grid
 	//use that information to find the 8 cells you have to check
-	glm::vec3 boidPos = (pos[index] - gridMin) * inverseCellWidth;
-	int x = glm::round( boidPos.x / (float(gridResolution)) );
-	int y = glm::round( boidPos.y / (float(gridResolution)) );
-	int z = glm::round( boidPos.z / (float(gridResolution)) );
+	glm::ivec3 boidPos = (pos[index] - gridMin) * inverseCellWidth;
+	int x = glm::round(boidPos.x);
+	int y = glm::round(boidPos.y);
+	int z = glm::round(boidPos.z);
 
 	glm::vec3 v1 = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 v2 = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -523,23 +520,24 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 					//to it if it falls within the neighbor hood distance
 					for (int h = gridCellStartIndices[boidGridCellindex]; h < gridCellEndIndices[boidGridCellindex]; h++)
 					{
+						int bindex = particleArrayIndices[h];
 						if (h != index)
 						{
-							distance = glm::distance(pos[particleArrayIndices[h]], pos[index]);
+							distance = glm::distance(pos[bindex], pos[index]);
 							if (distance < rule1Distance)
-							{
-								percieved_center_of_mass += pos[particleArrayIndices[h]];
+							{								
+								percieved_center_of_mass += pos[bindex];
 								neighborCount1++;
 							}
 
 							if (distance < rule2Distance)
 							{
-								separate_vector -= (pos[particleArrayIndices[h]] - pos[index]);
+								separate_vector -= (pos[bindex] - pos[index]);
 							}
 
 							if (distance < rule3Distance)
 							{
-								perceived_velocity += vel1[particleArrayIndices[h]];
+								perceived_velocity += vel1[bindex];
 								neighborCount3++;
 							}
 						}
@@ -573,7 +571,6 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 		newVel = glm::normalize(newVel) * maxSpeed;
 	}
 	vel2[index] = newVel;
-	//printf("%f %f %f \n", v1.x, v1.y, v1.z);
 }
 
 __global__ void kernUpdateVelNeighborSearchCoherent(
@@ -604,10 +601,10 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	//find boid position
 	//then use that position to determine its place in the the uniform grid
 	//use that information to find the 8 cells you have to check
-	glm::vec3 boidPos = (coherentPos[index] - gridMin) * inverseCellWidth;
-	int x = glm::round(boidPos.x / (float(gridResolution)));
-	int y = glm::round(boidPos.y / (float(gridResolution)));
-	int z = glm::round(boidPos.z / (float(gridResolution)));
+	glm::ivec3 boidPos = (coherentPos[index] - gridMin) * inverseCellWidth;
+	int x = glm::round(boidPos.x);
+	int y = glm::round(boidPos.y);
+	int z = glm::round(boidPos.z);
 
 	glm::vec3 v1 = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 v2 = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -622,11 +619,11 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 
 	float distance = 0.0f;
 
-	for (int i = -1; i <= 1; i++)
+	for (int i = -1; i < 1; i++)
 	{
-		for (int j = -1; j <= 1; j++)
+		for (int j = -1; j < 1; j++)
 		{
-			for (int k = -1; k <= 1; k++)
+			for (int k = -1; k < 1; k++)
 			{
 				int _x = x + i;
 				int _y = y + j;
