@@ -442,8 +442,8 @@ __global__ void kernSortPosAndVel(int N, int *particleArrayIndices, glm::vec3 *p
 
   int sortedIndex = particleArrayIndices[index];
 
-  sortedPos[sortedIndex] = pos[index];
-  sortedVel[sortedIndex] = vel[index];
+  sortedPos[index] = pos[sortedIndex];
+  sortedVel[index] = vel[sortedIndex];
 }
 
 __global__ void kernUpdateVelNeighborSearchScattered(
