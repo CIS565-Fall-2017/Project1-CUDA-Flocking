@@ -9,8 +9,8 @@ Project 1 - Flocking**
 
 ![](images/chart.png)
 
-![](images/chart (1).png)
+![](images/chart1.png)
 
-![](images/chart (2).png)
+![](images/chart2.png)
 
-![](images/chart (3).png)
+![](images/chart3.png)
