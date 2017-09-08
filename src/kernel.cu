@@ -354,6 +354,11 @@ __global__ void kernUpdatePos(int N, float dt, glm::vec3 *pos, glm::vec3 *vel) {
 //            for(y)
 //             for(z)? Or some other order?
 __device__ int gridIndex3Dto1D(int x, int y, int z, int gridResolution) {
+  if (x < 0 || x >= gridResolution || y < 0 || y >= gridResolution || z < 0 || z >= gridResolution)
+  {
+    return -1;
+  }
+
   return x + y * gridResolution + z * gridResolution * gridResolution;
 }
 
@@ -419,16 +424,6 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
   }
 }
 
-__device__ glm::vec3 gridIndex1Dto3D(int index, int gridResolution)
-{
-  int gridResolutionSq = gridResolution * gridResolution;
-  int z = index / gridResolutionSq;
-  int y = (index - (z * gridResolutionSq)) / gridResolution;
-  int x = index - (z * gridResolutionSq) - y * gridResolution;
-  
-  return glm::vec3(x, y, z);
-}
-
 __global__ void kernUpdateVelNeighborSearchScattered(
   int N, int gridResolution, glm::vec3 gridMin,
   float inverseCellWidth, float cellWidth,
@@ -459,18 +454,29 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   float rule3NeighborCount = 0.f;
 
   int neighborIndices[8];
-  float halfCellWidth = cellWidth / 2.f;
   glm::vec3 gridIndex3D = glm::floor((thisPos - gridMin) * inverseCellWidth);
   glm::vec3 gridCenter = (gridIndex3D - gridResolution * 0.5f) * cellWidth + (cellWidth * 0.5f);
   glm::vec3 displacement = glm::sign(thisPos - gridCenter);
 
-  // TODO: Check that each component doesn't go out of bounds
-  // Assign all neighbor indices
-  neighborIndices[0] = gridIndex3Dto1D(gridIndex3D.x + displacement.x, gridIndex3D.y, gridIndex3D.z, gridResolution);
+  neighborIndices[0] = gridIndex3Dto1D(gridIndex3D.x, gridIndex3D.y, gridIndex3D.z, gridResolution);
+  neighborIndices[1] = gridIndex3Dto1D(gridIndex3D.x + displacement.x, gridIndex3D.y, gridIndex3D.z, gridResolution);
+  neighborIndices[2] = gridIndex3Dto1D(gridIndex3D.x, gridIndex3D.y + displacement.y, gridIndex3D.z, gridResolution);
+  neighborIndices[3] = gridIndex3Dto1D(gridIndex3D.x, gridIndex3D.y, gridIndex3D.z + displacement.z, gridResolution);
+  neighborIndices[4] = gridIndex3Dto1D(gridIndex3D.x + displacement.x, gridIndex3D.y + displacement.y, gridIndex3D.z, gridResolution);
+  neighborIndices[5] = gridIndex3Dto1D(gridIndex3D.x, gridIndex3D.y + displacement.y, gridIndex3D.z + displacement.z, gridResolution);
+  neighborIndices[6] = gridIndex3Dto1D(gridIndex3D.x + displacement.x, gridIndex3D.y, gridIndex3D.z + displacement.z, gridResolution);
+  neighborIndices[7] = gridIndex3Dto1D(gridIndex3D.x + displacement.x, gridIndex3D.y + displacement.y, gridIndex3D.z + displacement.z, gridResolution);
 
   for (int neighborCubeIndex = 0; neighborCubeIndex < 8; neighborCubeIndex++)
   {
     int neighborGridIndex = neighborIndices[neighborCubeIndex];
+
+    // An invalid 3D grid index was given
+    if (neighborGridIndex == -1)
+    {
+      continue;
+    }
+
     int startIndex = gridCellStartIndices[neighborGridIndex];
     int endIndex = gridCellEndIndices[neighborGridIndex];
 
@@ -577,21 +583,27 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // - Perform velocity updates using neighbor search
   // - Update positions
   // - Ping-pong buffers as needed
-  dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+  dim3 particleBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+  dim3 cellBlocksPerGrid((gridCellCount + blockSize - 1) / blockSize);
 
-  kernComputeIndices << <fullBlocksPerGrid, threadsPerBlock>> > (numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
+  kernComputeIndices<<<particleBlocksPerGrid, threadsPerBlock>>>(numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
 
   thrust::device_ptr<int> dev_thrust_keys(dev_particleGridIndices);
   thrust::device_ptr<int> dev_thrust_values(dev_particleArrayIndices);
   thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + numObjects, dev_thrust_values);
 
-  for (int i = 0; i < gridCellCount; i++)
-  {
-    dev_gridCellStartIndices[i] = -1;
-    dev_gridCellEndIndices[i] = -1;
-  }
+  kernResetIntBuffer << <cellBlocksPerGrid, threadsPerBlock >> > (gridCellCount, dev_gridCellStartIndices, -1);
+  kernResetIntBuffer << <cellBlocksPerGrid, threadsPerBlock >> > (gridCellCount, dev_gridCellEndIndices, -1);
 
-  kernIdentifyCellStartEnd << <fullBlocksPerGrid, threadsPerBlock >> > (numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
+  kernIdentifyCellStartEnd<<<particleBlocksPerGrid, threadsPerBlock>>>(numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
+
+  kernUpdateVelNeighborSearchScattered << <particleBlocksPerGrid, threadsPerBlock >> > (numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, gridCellWidth,
+    dev_gridCellStartIndices, dev_gridCellEndIndices, dev_particleArrayIndices, dev_pos, dev_vel1, dev_vel2);
+  kernUpdatePos << <particleBlocksPerGrid, threadsPerBlock >> > (numObjects, dt, dev_pos, dev_vel2);
+
+  glm::vec3 *temp = dev_vel1;
+  dev_vel1 = dev_vel2;
+  dev_vel2 = temp;
 }
 
 void Boids::stepSimulationCoherentGrid(float dt) {
