@@ -41,9 +41,9 @@ void checkCUDAError(const char *msg, int line = -1) {
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
-#define rule1Distance 10.0f
-#define rule2Distance 6.0f
-#define rule3Distance 20.0f
+#define rule1Distance 5.0f
+#define rule2Distance 3.0f
+#define rule3Distance 5.0f
 
 #define rule1Scale 0.01f
 #define rule2Scale 0.1f
@@ -276,12 +276,16 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
       }
     }
   }
-  perceivedCenter = perceivedCenter / (float) imax(1, nearBoid1Count);
-  perceivedVel = perceivedVel / (float) imax(1, nearBoid3Count);
 
-  finalVel = (perceivedCenter - selfPos) * rule1Scale;
+  if (nearBoid1Count > 0) {
+	  perceivedCenter = perceivedCenter / (float)nearBoid1Count;
+	  finalVel += (perceivedCenter - selfPos) * rule1Scale;
+  }
+  if (nearBoid3Count > 0) {
+	  perceivedVel = perceivedVel / (float)nearBoid3Count;
+	  finalVel += perceivedVel * rule3Scale;
+  }
   finalVel += avoidanceVector * rule2Scale;
-  finalVel += perceivedVel * rule3Scale;
 
 	return vel[iSelf] + finalVel;
 }
@@ -504,12 +508,17 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 			}
 		}
 
-		perceivedCenter = perceivedCenter / (float)imax(1, nearBoid1Count);
-		perceivedVel = perceivedVel / (float)imax(1, nearBoid3Count);
+		if (nearBoid1Count > 0) {
+			perceivedCenter = perceivedCenter / (float)nearBoid1Count;
+			finalVel += (perceivedCenter - selfPos) * rule1Scale;
+		}
+		if (nearBoid3Count > 0) {
+			perceivedVel = perceivedVel / (float)nearBoid3Count;
+			finalVel += perceivedVel * rule3Scale;
+		}
+		
 
-		finalVel = (perceivedCenter - selfPos) * rule1Scale;
 		finalVel += avoidanceVector * rule2Scale;
-		finalVel += perceivedVel * rule3Scale;
 
 		finalVel = vel1[index] + finalVel;
 		if (glm::length(finalVel) > maxSpeed) {
@@ -593,13 +602,15 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 				}
 			}
 		}
-
-		perceivedCenter = perceivedCenter / (float)imax(1, nearBoid1Count);
-		perceivedVel = perceivedVel / (float)imax(1, nearBoid3Count);
-
-		finalVel = (perceivedCenter - selfPos) * rule1Scale;
+		if (nearBoid1Count > 0) {
+			perceivedCenter = perceivedCenter / (float)nearBoid1Count;
+			finalVel += (perceivedCenter - selfPos) * rule1Scale;
+		}
+		if (nearBoid3Count > 0) {
+			perceivedVel = perceivedVel / (float)nearBoid3Count;
+			finalVel += perceivedVel * rule3Scale;
+		}
 		finalVel += avoidanceVector * rule2Scale;
-		finalVel += perceivedVel * rule3Scale;
 
 		finalVel = vel1[index] + finalVel;
 		if (glm::length(finalVel) > maxSpeed) {
@@ -690,8 +701,10 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	kernShufflePositionVelocity << < fullBlocksPerGrid, blockSize >> > (numObjects, dev_particleArrayIndices,
 		dev_pos, dev_vel1, dev_shuffledPos, dev_vel2);
   // - Perform velocity updates using neighbor search
-	kernUpdateVelNeighborSearchCoherent << <fullBlocksPerGrid, blockSize >> > (numObjects, gridSideCount, gridMinimum,
-		gridInverseCellWidth, gridCellWidth, dev_gridCellStartIndices, dev_gridCellEndIndices,
+	kernUpdateVelNeighborSearchCoherent << <fullBlocksPerGrid, blockSize >> > (numObjects, 
+		gridSideCount, gridMinimum,
+		gridInverseCellWidth, gridCellWidth, 
+		dev_gridCellStartIndices, dev_gridCellEndIndices,
 		dev_shuffledPos, dev_vel2, dev_vel1);
 	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_shuffledPos, dev_vel1);
   // - Update positions
