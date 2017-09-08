@@ -11,7 +11,10 @@ anything here that you don't want to share with the world.)
 
 ![](images/flock.gif)
 
-![](images/NumOfBoids.png)
+<p align="center">
+  <img src="images/NumOfBoids.png">
+</p>
+
 
 <p align="center">
   <img src="images/BlockSize.png">
