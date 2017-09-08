@@ -15,7 +15,8 @@ anything here that you don't want to share with the world.)
 # 1.Naive Boid Simulation #
 ## Kernel.cu Structure
 
-The structure of the naive sorting would be quite simple. The work flow of all the functions inside Kernel.cu is listed here. 
+The structure of the naive sorting would be quite simple. The work flow of all the functions inside Kernel.cu is listed here.
+
 
 ![](https://i.imgur.com/eEBgLtx.jpg)
 
@@ -42,7 +43,6 @@ We can also rotate the camera to see different view points.
 
 ![](https://i.imgur.com/Djef0me.jpg)
 
-## Performance Analysis ##
 
 # 2. Better Flocking #
 
@@ -51,6 +51,8 @@ We can also rotate the camera to see different view points.
 Since the structure is super complicated, I think a graph would be a better illustrator:
 
 ![](https://i.imgur.com/yvtWad5.jpg)
+
+The gridIndex3Dto1D and newUpdateVelocity are device procedures that are called from kernComputerIndices and also kernUpdateNeighborSearchScatter. 
 
 ## Result ##
 
@@ -73,9 +75,19 @@ The structure of Coherent searching are basically the same as the scatter search
 
 ![](https://i.imgur.com/DKviHsM.jpg)
 
+When the total number of boids are 5000, all the fps data of visualized flocking are basically arond 60 fps. Apparently, coherent searching would be more stable and also it reaches the maximum of screen fps before the other two methods. 
+
+However, when the boids are not visualized. The fps will greatly be increased. Apparently, the fps of Naive tends to be stably above 100 fps. And scatter and coherent searching would be around 300 to 400 fps. But I am not sure why the coherent searching is slower than scatter at the beginning. It should be faster to reach the maximum fps than scatter.
+
 50000 Boids
 
 ![](https://i.imgur.com/lT69fJI.jpg)
+
+For 50000 boids, it is obvious that naive searching would be too slow because of searching method. The fps of both naive visualized and non-visualized are around 3 fps. 
+
+However, it seems that coherent searching is somehow slower than scatter searching. In my opinion, it is because of the way I implemented this method. Since basically the are the same, but I used two more array in the device, and there will be two more cudaMalloc and cudaFree and also one more cuda kernel function in the main simulation loop, also there is one more cudaMemcpy to copy the rearranged position back to dev_pos. Therefore, it takes more time to transfer data. 
+
+Additionally, I am not sure why there is a severe drop of fps soon after 5 seconds. 
 
 Block Size 512, 5000 boids
 
