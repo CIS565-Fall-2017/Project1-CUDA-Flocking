@@ -4,6 +4,7 @@ Project 1 - Flocking**
 * Pennid: lujiayi Name: Jiahao Liu
 * Tested on: (TODO) Windows 10, i7-3920XM CPU @ 2.90GHz 3.10 GHz 16GB, GTX 980m SLI 8192MB (personal computer)
 
+# Chart Showing Without Visualization
 
 ![](images/BOIDS.gif)
 
@@ -14,3 +15,7 @@ Project 1 - Flocking**
 ![](images/chart2.png)
 
 ![](images/chart3.png)
+
+#Chart Showing With Visualization
+
+![](images/chart4.png)
