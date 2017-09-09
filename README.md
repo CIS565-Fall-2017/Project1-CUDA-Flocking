@@ -71,7 +71,7 @@ The elapse time of step simulation is computed by cudaEvent.
 
 **1) For each implementation, how does changing the number of boids affect performance? Why do you think this is?**
 
-The increasing of the number of boids leads to the decreasing of performance. Since there are more neighbors needed to be check.
+The increasing of the number of boids leads to the decreasing of performance, since there are more neighbors needed to be check.
 
 **2) For each implementation, how does changing the block count and block size affect performance? Why do you think this is?**
 
