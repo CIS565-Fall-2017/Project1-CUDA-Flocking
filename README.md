@@ -19,7 +19,7 @@ Roughly speaking the running time per frame for naive method works with time com
 
 ![](images/chart2.png)
 
-It is a little bit weird that the coherent performs bad on 5000 boids. Maybe time for forming new vel1 and pos brings extra time is obvious when the boids number is low.
+It is a little bit weird that the coherent performs bad on 5000 boids. Maybe the extra time cost for forming new vel1 and pos is much more obvious when the boids number is low.
 
 ![](images/chart3.png)
 
