@@ -6,7 +6,7 @@
 #include "utilityCore.hpp"
 #include "kernel.h"
 
-// LOOK-2.1 potentially useful for doing grid-based neighbor search
+// Useful for doing grid-based neighbor search
 #ifndef imax
 #define imax( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
@@ -37,10 +37,9 @@ void checkCUDAError(const char *msg, int line = -1) {
 *****************/
 
 /*! Block size used for CUDA kernel launch. */
-#define blockSize 8
+#define blockSize 128
 
-// LOOK-1.2 Parameters for the boids algorithm.
-// These worked well in our reference implementation.
+// Parameters for the boids algorithm.
 #define rule1Distance 5.0f
 #define rule2Distance 3.0f
 #define rule3Distance 5.0f
@@ -51,7 +50,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 
 #define maxSpeed 1.0f
 
-/*! Size of the starting area in simulation space. */
+//Size of the starting area in simulation space. --> -scene_scale to scene_scale in every dimension
 #define scene_scale 100.0f
 
 /***********************************************
@@ -61,35 +60,32 @@ void checkCUDAError(const char *msg, int line = -1) {
 int numObjects;
 dim3 threadsPerBlock(blockSize);
 
-// LOOK-1.2 - These buffers are here to hold all your boid information.
-// These get allocated for you in Boids::initSimulation.
-// Consider why you would need two velocity buffers in a simulation where each
-// boid cares about its neighbors' velocities.
-// These are called ping-pong buffers.
+// These buffers are here to hold all your boid information.
+// These are allocated in Boids::initSimulation.
+// We need two velocity buffers in a simulation so we can ping-pong the buffers.
+// This way we can modify the data of one of the velocity buffers while reading from the other
 glm::vec3 *dev_pos;
 glm::vec3 *dev_vel1;
 glm::vec3 *dev_vel2;
 
-// LOOK-2.1 - these are NOT allocated for you. You'll have to set up the thrust
-// pointers on your own too.
-
 // For efficient sorting and the uniform grid. These should always be parallel.
-int *dev_particleArrayIndices; // What index in dev_pos and dev_velX represents this particle?
-int *dev_particleGridIndices; // What grid cell is this particle in?
-							  // needed for use with thrust
+int *dev_particleArrayIndices; // Stores which index in dev_pos and dev_velX represents this particle?
+int *dev_particleGridIndices; // Stores which grid cell is this particle in?
+
+// Needed for use with thrust
 thrust::device_ptr<int> dev_thrust_particleArrayIndices;
 thrust::device_ptr<int> dev_thrust_particleGridIndices;
 
-int *dev_gridCellStartIndices; // What part of dev_particleArrayIndices belongs
-int *dev_gridCellEndIndices;   // to this cell?
+int *dev_gridCellStartIndices; // Stores Which part of dev_particleArrayIndices belongs
+int *dev_gridCellEndIndices;   // to this grid cell?
 
-// TODO-2.3 - consider what additional buffers you might need to reshuffle
+// Additional buffers needed to reshuffle
 // the position and velocity data to be coherent within cells.
 glm::vec3 *dev_coherentVel; //rearranged form of dev_vel2 so that it is more memory coherent
 glm::vec3 *dev_coherentPos; //rearranged form of dev_pos so that it is more memory coherent
 
-// LOOK-2.1 - Grid parameters based on simulation parameters.
-// These are automatically computed for you in Boids::initSimulation
+// Grid parameters based on simulation parameters.
+// These are computed in Boids::initSimulation
 int gridCellCount;
 int gridSideCount;
 float gridCellWidth;
@@ -110,11 +106,12 @@ __host__ __device__ unsigned int hash(unsigned int a) {
 	return a;
 }
 
-/**
-* LOOK-1.2 - this is a typical helper function for a CUDA kernel.
+/*
+* Helper function for a CUDA kernel.
 * Function for generating a random vec3.
 */
-__host__ __device__ glm::vec3 generateRandomVec3(float time, int index) {
+__host__ __device__ glm::vec3 generateRandomVec3(float time, int index) 
+{
 	thrust::default_random_engine rng(hash((int)(index * time)));
 	thrust::uniform_real_distribution<float> unitDistrib(-1, 1);
 
@@ -122,10 +119,11 @@ __host__ __device__ glm::vec3 generateRandomVec3(float time, int index) {
 }
 
 /**
-* LOOK-1.2 - This is a basic CUDA kernel.
-* CUDA kernel for generating boids with a specified mass randomly around the star.
+* This is a basic CUDA kernel.
+* CUDA kernel for generating boids with a random position somewhere inside the simulation space
 */
-__global__ void kernGenerateRandomPosArray(int time, int N, glm::vec3 * arr, float scale) {
+__global__ void kernGenerateRandomPosArray(int time, int N, glm::vec3 * arr, float scale) 
+{
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index < N) {
 		glm::vec3 rand = generateRandomVec3(time, index);
@@ -148,6 +146,7 @@ void Boids::initSimulation(int N)
 
 	// Basic CUDA memory management and error checking.
 	// Don't forget to cudaFree in  Boids::endSimulation.
+	// Allocating all buffers at once is more efficient.
 	cudaMalloc((void**)&dev_pos, N * sizeof(glm::vec3));
 	checkCUDAErrorWithLine("cudaMalloc dev_pos failed!");
 
@@ -157,23 +156,6 @@ void Boids::initSimulation(int N)
 	cudaMalloc((void**)&dev_vel2, N * sizeof(glm::vec3));
 	checkCUDAErrorWithLine("cudaMalloc dev_vel2 failed!");
 
-	//generate random initial positions for boids
-	kernGenerateRandomPosArray << <fullBlocksPerGrid, blockSize >> >(1, numObjects, dev_pos, scene_scale);
-	checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
-
-	//Computing grid params
-	gridCellWidth = 1.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
-	int halfSideCount = (int)(scene_scale / gridCellWidth) + 1;
-	gridSideCount = 2 * halfSideCount;
-
-	gridCellCount = gridSideCount * gridSideCount * gridSideCount;
-	gridInverseCellWidth = 1.0f / gridCellWidth;
-	float halfGridWidth = gridCellWidth * halfSideCount;
-	gridMinimum.x -= halfGridWidth;
-	gridMinimum.y -= halfGridWidth;
-	gridMinimum.z -= halfGridWidth;
-
-	// TODO-2.1 TODO-2.3 - Allocate additional buffers here.
 	cudaMalloc((void**)&dev_particleArrayIndices, N * sizeof(int));
 	checkCUDAErrorWithLine("cudaMalloc dev_particleArrayIndices failed!");
 
@@ -185,12 +167,28 @@ void Boids::initSimulation(int N)
 
 	cudaMalloc((void**)&dev_gridCellEndIndices, gridCellCount * sizeof(int));
 	checkCUDAErrorWithLine("cudaMalloc dev_particleArrayIndices failed!");
-	
+
 	cudaMalloc((void**)&dev_coherentPos, N * sizeof(glm::vec3));
 	checkCUDAErrorWithLine("cudaMalloc dev_coherentPos failed!");
 
 	cudaMalloc((void**)&dev_coherentVel, N * sizeof(glm::vec3));
 	checkCUDAErrorWithLine("cudaMalloc dev_coherentVel failed!");
+
+	//generate random initial positions for boids
+	kernGenerateRandomPosArray <<<fullBlocksPerGrid, blockSize >>>(1, numObjects, dev_pos, scene_scale);
+	checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
+
+	//Computing grid parameters
+	gridCellWidth = 1.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+	int halfSideCount = (int)(scene_scale / gridCellWidth) + 1; //not sure why + 1
+	gridSideCount = 2 * halfSideCount;
+
+	gridCellCount = gridSideCount * gridSideCount * gridSideCount;
+	gridInverseCellWidth = 1.0f / gridCellWidth;
+	float halfGridWidth = gridCellWidth * halfSideCount;
+	gridMinimum.x -= halfGridWidth;
+	gridMinimum.y -= halfGridWidth;
+	gridMinimum.z -= halfGridWidth;
 
 	cudaThreadSynchronize();
 }
@@ -203,7 +201,8 @@ void Boids::initSimulation(int N)
 /*
 * Copy the boid positions into the VBO so that they can be drawn by OpenGL.
 */
-__global__ void kernCopyPositionsToVBO(int N, glm::vec3 *pos, float *vbo, float s_scale) {
+__global__ void kernCopyPositionsToVBO(int N, glm::vec3 *pos, float *vbo, float s_scale) 
+{
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
 	float c_scale = -1.0f / s_scale;
@@ -216,7 +215,8 @@ __global__ void kernCopyPositionsToVBO(int N, glm::vec3 *pos, float *vbo, float 
 	}
 }
 
-__global__ void kernCopyVelocitiesToVBO(int N, glm::vec3 *vel, float *vbo, float s_scale) {
+__global__ void kernCopyVelocitiesToVBO(int N, glm::vec3 *vel, float *vbo, float s_scale) 
+{
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
 	if (index < N) {
@@ -230,12 +230,12 @@ __global__ void kernCopyVelocitiesToVBO(int N, glm::vec3 *vel, float *vbo, float
 /*
 * Wrapper for call to the kernCopyboidsToVBO CUDA kernel.
 */
-void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) {
+void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
+{
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
 
-	kernCopyPositionsToVBO << <fullBlocksPerGrid, blockSize >> >(numObjects, dev_pos, vbodptr_positions, scene_scale);
-	kernCopyVelocitiesToVBO << <fullBlocksPerGrid, blockSize >> >(numObjects, dev_vel1, vbodptr_velocities, scene_scale);
-
+	kernCopyPositionsToVBO <<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_pos, vbodptr_positions, scene_scale);
+	kernCopyVelocitiesToVBO <<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_vel1, vbodptr_velocities, scene_scale);
 	checkCUDAErrorWithLine("copyBoidsToVBO failed!");
 
 	cudaThreadSynchronize();
@@ -247,9 +247,9 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 ******************/
 
 /**
-* LOOK-1.2 You can use this as a helper for kernUpdateVelocityBruteForce.
+* Helper for kernUpdateVelocityBruteForce.
 * __device__ code can be called from a __global__ context
-* Compute the new velocity on the body with index `iSelf` due to the `N` boids
+* Compute the new velocity of the boid with index `iSelf` due to the `N` boids
 * in the `pos` and `vel` arrays.
 */
 __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) 
@@ -271,6 +271,7 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 	{
 		if (i != iSelf)
 		{
+			// 3 rules for the basic boids algorithm
 			distance = glm::distance(pos[i], pos[iSelf]);
 			if (distance < rule1Distance)
 			{
@@ -316,29 +317,33 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 * For each of the `N` bodies, update its position based on its current velocity.
 */
 __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2) 
-{
-	// Compute a new velocity based on pos and vel1
-	// Clamp the speed
-	// Record the new velocity into vel2. Question: why NOT vel1?
+{	
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (index >= N) 
 	{
 		return;
 	}
 
+	// Compute a new velocity based on pos and vel1
 	glm::vec3 newVel = vel1[index] + computeVelocityChange(N, index, pos, vel1);
+	// Clamp the speed
 	if (glm::length(newVel) > maxSpeed)
 	{
 		newVel = glm::normalize(newVel) * maxSpeed;
 	}
+	// Record the new velocity into vel2. 
+	// Question: why NOT vel1?
+	// Answer: vel1 is being read from as well in this kernel. And so if we wrote into it some threads might read 
+	// in the incorrect data or they simply may not be able to read it because it is being written into, etc. This
+	// is why we ping-pog the velocity buffers
 	vel2[index] = newVel;
 }
 
-/**
-* LOOK-1.2 Since this is pretty trivial, we implemented it for you.
+/*
 * For each of the `N` bodies, update its position based on its current velocity.
 */
-__global__ void kernUpdatePos(int N, float dt, glm::vec3 *pos, glm::vec3 *vel) {
+__global__ void kernUpdatePos(int N, float dt, glm::vec3 *pos, glm::vec3 *vel) 
+{
 	// Update position by velocity
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (index >= N) 
@@ -360,12 +365,7 @@ __global__ void kernUpdatePos(int N, float dt, glm::vec3 *pos, glm::vec3 *vel) {
 	pos[index] = thisPos;
 }
 
-// LOOK-2.1 Consider this method of computing a 1D index from a 3D grid index.
-// LOOK-2.3 Looking at this method, what would be the most memory efficient
-//          order for iterating over neighboring grid cells?
-//          for(x)
-//            for(y)
-//             for(z)? Or some other order?look-2.1
+// Method of computing a 1D index from a 3D grid index.
 __device__ int gridIndex3Dto1D(int x, int y, int z, int gridResolution) 
 {
 	return x + y * gridResolution + z * gridResolution * gridResolution;
@@ -375,26 +375,23 @@ __global__ void kernComputeIndices(int N, int gridResolution,
 	glm::vec3 gridMin, float inverseCellWidth,
 	glm::vec3 *pos, int *indices, int *gridIndices) 
 {
-	// TODO-2.1
-	// - Label each boid with the index of its grid cell.
-	// - Set up a parallel array of integer indices as pointers to the actual
-	//   boid data in pos and vel1/vel2
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (index >= N)
 	{
 		return;
 	}
 
-	//go through the boids and determine which grid cell to bin them into
+	// Go through the boids and determine which grid cell to bin them into
 	glm::ivec3 boidPos = (pos[index] - gridMin) * inverseCellWidth;
 	gridIndices[index] = gridIndex3Dto1D(boidPos.x, boidPos.y, boidPos.z, gridResolution);
+	// Set up a parallel array of integer indices as pointers to the actual
+	// boid data in pos and vel1/vel2
 	indices[index] = index;
-
-	//printf("%f %f %f \n", pos[index].x, pos[index].y, pos[index].z);
 }
 
-// LOOK-2.1 Consider how this could be useful for indicating that a cell
-//          does not enclose any boids
+// This is useful for indicating that a cell does not enclose any boids
+// Called at the beginning of every step of a simulation to reset the buffer values to a default value which 
+// tells us if the cell holds any boids or not
 __global__ void kernResetIntBuffer(int N, int *intBuffer, int value) 
 {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -404,14 +401,10 @@ __global__ void kernResetIntBuffer(int N, int *intBuffer, int value)
 	}
 }
 
+// Identify the start and end points of each gridcell in the gridIndices array.
 __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 	int *gridCellStartIndices, int *gridCellEndIndices) 
 {
-	// TODO-2.1
-	// Identify the start point of each cell in the gridIndices array.
-	// This is basically a parallel unrolling of a loop that goes
-	// "this index doesn't match the one before it, must be a new cell!"
-
 	//go through particleGridIndices identifying when there is a change in there value, 
 	//which signifies a change in the gridcell we are dealing with
 	int index = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -420,17 +413,17 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 		return;
 	}
 	
-	if (index == 0)
+	if (index == 0) //edge case
 	{
 		gridCellStartIndices[particleGridIndices[index]] = 0;
 	}
-	else if (index == N - 1)
+	else if (index == N - 1) //edge case
 	{
 		gridCellEndIndices[particleGridIndices[index]] = N - 1;
 	}
 	else if (particleGridIndices[index] != particleGridIndices[index + 1])
 	{
-		//inbetween grid cells with no boids are set to -1  --> done before when both the arrays was initialised to -1
+		//inbetween grid cells with no boids are set to -1  --> done before when both the arrays were reset to -1
 
 		//change in gridcell
 		gridCellEndIndices[particleGridIndices[index]] = index;
@@ -438,6 +431,7 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 	}
 }
 
+// Store the reshuffled position and velocity buffers that are more memory coherent in new coherentPos and coherentVel buffers 
 __global__ void kernSetCoherentPosVel(int N, int *particleArrayIndices,
 									  int *gridCellStartIndices, int *gridCellEndIndices,
 									  const glm::vec3 *pos, const glm::vec3 *vel,
@@ -714,9 +708,11 @@ void Boids::stepSimulationNaive(float dt)
 	//Setup thread/block execution configuration
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);//no dim1,  dim3 automatically makes the ther dimensions 0
 
+	//update boid velocities
 	kernUpdateVelocityBruteForce<<<fullBlocksPerGrid, blockSize >>>(numObjects, dev_pos, dev_vel1, dev_vel2);
 	checkCUDAErrorWithLine("kernUpdateVelocityBruteForce failed!");
 
+	//update boid positions
 	kernUpdatePos<<<fullBlocksPerGrid, blockSize >>>(numObjects, dt, dev_pos, dev_vel1);
 	checkCUDAErrorWithLine("kernUpdatePos failed!");
 
@@ -839,6 +835,7 @@ void Boids::stepSimulationCoherentGrid(float dt)
 	std::swap(dev_vel1, dev_vel2);
 }
 
+//Free memory that was allocated in initSimulation
 void Boids::endSimulation() 
 {
 	//Free any buffers here
@@ -846,7 +843,6 @@ void Boids::endSimulation()
 	cudaFree(dev_vel2);
 	cudaFree(dev_pos);
 
-	// TODO-2.1 TODO-2.3 - Free any additional buffers here.
 	cudaFree(dev_particleArrayIndices);
 	cudaFree(dev_particleGridIndices);
 	cudaFree(dev_gridCellStartIndices);
