@@ -1,13 +1,3 @@
-**University of Pennsylvania, CIS 565: GPU Programming and Architecture,
-Project 1 - Flocking**
-
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
-
-### (TODO: Your README)
-
-Include screenshots, analysis, etc. (Remember, this is public, so don't put
-anything here that you don't want to share with the world.)
 Project 1 Boids with CUDA
 ==========================
 
@@ -19,7 +9,7 @@ Project 1 - Boids**
 
 ### Overview
 
-![](images/results/Boids_flockingrecordedat24fps.gif)
+![](images/results/Boids.gif)
 ###### (Run on GTX 1070(laptop GPU) with 10000 boids)
 
 This project served as an introduction to CUDA kernels, how to use them, and how to analyze their performance. This was done by implementing the Reynolds Boids algorithm in parallel on the GPU.
@@ -29,7 +19,7 @@ Boids is a crowd simulation algorithm developed by Craig Reynolds in 1986 which 
 * Alignment: Boids will tend to steer in the direction of the perceived average movement of other boids around them.
 * Separation: Boids will try to keep some amount of distance between them and other boids.
 
-###Three implementations:
+### Three implementations:
 #### 1. Naive
 
 The naive approach for computing the new positions and velocities for the boids is to check each boid against every other boid and apply the three rules described above. This is extremely slow with a time complexity of O(N^2). 
