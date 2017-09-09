@@ -1,8 +1,8 @@
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture,
 Project 1 - Flocking**
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+* Fengkai Wu
+* Tested on: Windows 10, i7-6700 @ 3.40GHz 16GB, Quadro K620 4095MB (Moore 100C Lab)
 
 ### (TODO: Your README)
 
