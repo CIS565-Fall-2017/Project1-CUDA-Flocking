@@ -10,12 +10,15 @@
 #include <vector>
 
 namespace Boids {
+
+	static bool isVel1Used = true;
+
     void initSimulation(int N);
     void stepSimulationNaive(float dt);
     void stepSimulationScatteredGrid(float dt);
     void stepSimulationCoherentGrid(float dt);
+	void stepSimulationSharedMemCoherentGrid(float dt);
     void copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities);
-
-    void endSimulation();
+	void endSimulation();
     void unitTest();
 }

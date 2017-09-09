@@ -14,12 +14,45 @@
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
-#define UNIFORM_GRID 0
-#define COHERENT_GRID 0
+#define UNIFORM_GRID 1
+#define COHERENT_GRID 1
+#define USE_SHAREDMEM 0
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 5000;
+const int N_FOR_VIS = 100000;
+
 const float DT = 0.2f;
+
+
+void printDeviceProperties()
+{
+	int deviceCount = 0;
+	cudaGetDeviceCount(&deviceCount);
+
+	cudaDeviceProp devProp;
+	for (int i = 0; i < deviceCount; ++i)
+	{
+		cudaGetDeviceProperties(&devProp, i);
+
+		std::cout << std::endl << "---- Information for device " << i << " ----" << std::endl << std::endl;
+				
+		std::cout <<"Name:                          " << devProp.name << std::endl;
+		std::cout <<"Revision:                      " << devProp.major << "." << devProp.minor << std::endl;
+		std::cout <<"Total global memory:           " << devProp.totalGlobalMem << std::endl;
+		std::cout <<"Total shared memory per block: " << devProp.sharedMemPerBlock << std::endl;
+		std::cout <<"Total registers per block:     " << devProp.regsPerBlock << std::endl;
+		std::cout <<"Warp size:                     " << devProp.warpSize << std::endl;
+		std::cout <<"Max threads per multiprocessor:" << devProp.maxThreadsPerMultiProcessor << std::endl;
+		std::cout <<"Max grid dimensions:           [" << devProp.maxGridSize[0] << ", " << devProp.maxGridSize[1] << ", " << devProp.maxGridSize[2] << "]" << std::endl;
+		std::cout <<"Max threads per block:         " << devProp.maxThreadsPerBlock << std::endl;
+		std::cout <<"Max registers per block:       " << devProp.regsPerBlock << std::endl;
+		std::cout <<"Max thread dimensions:         [" << devProp.maxThreadsDim[0] << ", " << devProp.maxThreadsDim[1] << ", " << devProp.maxThreadsDim[2] << "]" << std::endl;
+		std::cout <<"Clock rate:                    " << devProp.clockRate << std::endl;
+		std::cout <<"Total constant memory:         " << devProp.totalConstMem << std::endl;
+		std::cout <<"Texture alignment:             " << devProp.textureAlignment << std::endl;	
+		std::cout <<"Number of multiprocessors:     " << devProp.multiProcessorCount << std::endl;
+	}
+}
 
 /**
 * C main function.
@@ -28,6 +61,7 @@ int main(int argc, char* argv[]) {
   projectName = "565 CUDA Intro: Boids";
 
   if (init(argc, argv)) {
+	  printDeviceProperties();
     mainLoop();
     Boids::endSimulation();
     return 0;
@@ -92,6 +126,9 @@ bool init(int argc, char **argv) {
   glfwSetKeyCallback(window, keyCallback);
   glfwSetCursorPosCallback(window, mousePositionCallback);
   glfwSetMouseButtonCallback(window, mouseButtonCallback);
+
+  //Disable V_Sync
+  glfwSwapInterval(false);
 
   glewExperimental = GL_TRUE;
   if (glewInit() != GLEW_OK) {
@@ -196,10 +233,12 @@ void initShaders(GLuint * program) {
     float *dptrVertVelocities = NULL;
 
     cudaGLMapBufferObject((void**)&dptrVertPositions, boidVBO_positions);
-    cudaGLMapBufferObject((void**)&dptrVertVelocities, boidVBO_velocities);
+    cudaGLMapBufferObject((void**)&dptrVertVelocities, boidVBO_velocities);	
 
     // execute the kernel
-    #if UNIFORM_GRID && COHERENT_GRID
+	#if USE_SHAREDMEM && UNIFORM_GRID && COHERENT_GRID
+	Boids::stepSimulationSharedMemCoherentGrid(DT);
+    #elif UNIFORM_GRID && COHERENT_GRID
     Boids::stepSimulationCoherentGrid(DT);
     #elif UNIFORM_GRID
     Boids::stepSimulationScatteredGrid(DT);
@@ -218,9 +257,9 @@ void initShaders(GLuint * program) {
   void mainLoop() {
     double fps = 0;
     double timebase = 0;
-    int frame = 0;
+    int frame = 0;	
 
-    Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
+    //Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
                        // your CUDA development setup is ready to go.
 
     while (!glfwWindowShouldClose(window)) {
@@ -229,19 +268,24 @@ void initShaders(GLuint * program) {
       frame++;
       double time = glfwGetTime();
 
-      if (time - timebase > 1.0) {
+      if (time - timebase > 1.0)
+	  {
         fps = frame / (time - timebase);
         timebase = time;
         frame = 0;
       }
-
+	  
       runCUDA();
 
       std::ostringstream ss;
       ss << "[";
       ss.precision(1);
       ss << std::fixed << fps;
-      ss << " fps] " << deviceName;
+	  ss << " fps] ";
+	  ss << "[";
+	  ss.precision(2);
+	  ss << std::fixed << 1000.0 / fps;
+	  ss << " ms] " << deviceName;
       glfwSetWindowTitle(window, ss.str().c_str());
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -282,13 +326,13 @@ void initShaders(GLuint * program) {
   void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
     if (leftMousePressed) {
       // compute new camera parameters
-      phi += (xpos - lastX) / width;
-      theta -= (ypos - lastY) / height;
+      phi += (float)(xpos - lastX) / width;
+      theta -= (float)(ypos - lastY) / height;
       theta = std::fmax(0.01f, std::fmin(theta, 3.14f));
       updateCamera();
     }
     else if (rightMousePressed) {
-      zoom += (ypos - lastY) / height;
+      zoom += (float)(ypos - lastY) / height;
       zoom = std::fmax(0.1f, std::fmin(zoom, 5.0f));
       updateCamera();
     }
@@ -314,3 +358,5 @@ void initShaders(GLuint * program) {
       glUniformMatrix4fv(location, 1, GL_FALSE, &projection[0][0]);
     }
   }
+
+  
