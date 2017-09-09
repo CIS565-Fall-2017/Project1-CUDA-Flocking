@@ -15,10 +15,18 @@ Project 1 - Flocking**
 
 ![](images/chart1.png)
 
+Roughly speaking the running time per frame for naive method works with time complexity O(n^2). And the other two is O(n).
+
 ![](images/chart2.png)
 
+It is a little bit weird that the coherent performs bad on 5000 boids. Maybe time for forming new vel1 and pos brings extra time is obvious when the boids number is low.
+
 ![](images/chart3.png)
+
+It seems that change of block size is not so important on running time. I guess if we use video card with lower performance this chart will be a lot different.
 
 # Chart Showing With Visualization
 
 ![](images/chart4.png)
+
+FPS has a significant drop with visualization on. It is clear that copy data to VBO needs some time.
