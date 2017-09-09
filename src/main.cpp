@@ -4,8 +4,6 @@
 * @authors   Liam Boone, Kai Ninomiya, Kangning (Gary) Li
 * @date      2013-2017
 * @copyright University of Pennsylvania
-
-
 * @brief     Modified and implemented version of Boids flocking simulation for CIS 565
 * @authors   Aman Sachan
 * @date      9/9/2017
@@ -18,7 +16,7 @@
 // ================
 
 //Toggles for Visualization, UNIFORM_GRID, and COHERENT_GRID
-#define VISUALIZE 1
+#define VISUALIZE 0
 #define UNIFORM_GRID 1
 #define COHERENT_GRID 1
 
