@@ -16,13 +16,15 @@ Project 1 - Flocking**
 
 # Performance Analysis
 
-Methods for measuring performance:
+## Methods for measuring performance
 
 **Framerate change:**
-In main.cpp, add variables and loops to record fps in first 1000 calls of mainLoop() function, and average them to get the average fps.
+In main.cpp, add variables and loops to record fps in first 1000 calls of mainLoop( ) function, and average them to get the average fps.
+To unlock the fps limitation, I turned off vertical synchronization in NVIDIA control panel.
+
 
 **Time of step simulation:**
-In main.cpp, add variables and loops to record step simulation time in first 1000 calls of runCUDA() function, and average them to get the average step simulation time.
+In main.cpp, add variables and loops to record step simulation time in first 1000 calls of runCUDA( ) function, and average them to get the average step simulation time.
 The elapse time of step simulation is computed by cudaEvent.
 
 ## Performance plots
@@ -67,21 +69,24 @@ The elapse time of step simulation is computed by cudaEvent.
   <img src="images/time-block-nonvisual.png">
 </p>
 
-## Questions and answers
+# Questions and answers
 
-**1) For each implementation, how does changing the number of boids affect performance? Why do you think this is?**
+**1. For each implementation, how does changing the number of boids affect performance? Why do you think this is?**
 
 The increasing of the number of boids leads to the decreasing of performance, since there are more neighbors needed to be check.
 
-**2) For each implementation, how does changing the block count and block size affect performance? Why do you think this is?**
+**2. For each implementation, how does changing the block count and block size affect performance? Why do you think this is?**
 
 Changing the block count and block size does not affect performance.
 
-**3) For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?**
+**3. For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?**
 
 There are performance improvements in fps and runtime when the number of boids is big. But when the number of boids is small, the coherent uniform grid method does not improve the performance.
-I think it's because when the number of boids is big, neighborhood distance is much smaller than the full simulation space. When the number of boids is small, the neighborhood distance is not such small, and the code length of the coherent uniform grid is longer than naive method.
 
-**4) Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
+I think it's because when the number of boids is big, neighborhood distance is much smaller than the full simulation space, which means having each boid check every other boid is very inefficient.
 
-It will not affect the performance.
+When the number of boids is small, the neighborhood distance is not such small, and the code length of the coherent uniform grid is longer than naive method, so the naive method has a better performance.
+
+**4. Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
+
+I think it will not affect the performance, but I'm not sure.
