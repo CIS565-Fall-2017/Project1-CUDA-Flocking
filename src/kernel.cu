@@ -344,6 +344,29 @@ __device__ int getGridCellFromPosition(glm::vec3 pos, glm::vec3 gridMin, float i
 	return gridIndex3Dto1D(x, y, z, gridResolution);
 }
 
+__device__ int getGridCellQuadrant(float gridCellPos, float halfCellWidth) {
+	if (gridCellPos > halfCellWidth) {
+		return 1;
+	}
+	else {
+		return -1;
+	}
+}
+
+__device__ void checkGridCellAndUpdateVel(int x, int y, int z, int N, int gridResolution, glm::vec3 gridMin,
+	float inverseCellWidth, float cellWidth,
+	int *gridCellStartIndices, int *gridCellEndIndices,
+	int *particleArrayIndices,
+	glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2) {
+	if (x < 0 || x > gridResolution || y < 0 || y > gridResolution || z < 0 || z > gridResolution) {
+		return;
+	}
+	else {
+		int gridIndex = gridIndex3Dto1D(x, y, z, gridResolution);
+		int start = gridCellStartIndices[gridIndex];
+		int end = gridCellEndIndices[gridIndex];
+	}
+}
 
 __global__ void kernComputeIndices(int N, int gridResolution,
   glm::vec3 gridMin, float inverseCellWidth,
@@ -432,15 +455,25 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	// get particle pos
 	glm::vec3 partPos = pos[partIdx];
 
-	int x = glm::floor((partPos.x - gridMin.x)*inverseCellWidth);
-	int y = glm::floor((partPos.y - gridMin.y)*inverseCellWidth);
-	int z = glm::floor((partPos.z - gridMin.z)*inverseCellWidth);
+	float floatX = (partPos.x - gridMin.x)*inverseCellWidth;
+	float floatY = (partPos.y - gridMin.y)*inverseCellWidth;
+	float floatZ = (partPos.z - gridMin.z)*inverseCellWidth;
+
+	int x = glm::floor(floatX);
+	int y = glm::floor(floatY);
+	int z = glm::floor(floatZ);
 
 	// identify grid cell
 	int gridCell = gridIndex3Dto1D(x, y, z, gridResolution);
 
 	// calculate grid positions of up to eight neighbors
 	// use compute velocity change
+
+	int qX = getGridCellQuadrant(floatX - x, cellWidth / 2.0);
+	int qY = getGridCellQuadrant(floatY - y, cellWidth / 2.0);
+	int qZ = getGridCellQuadrant(floatZ - z, cellWidth / 2.0);
+
+	// TODO: check grids at x + qX, y + qY z + qZ
 
 	if ((partPos.x - gridMin.x - x) < (cellWidth / 2.0)) {
 		if ((partPos.y - gridMin.y - y) < (cellWidth / 2.0)) {
@@ -568,6 +601,10 @@ void Boids::endSimulation() {
   cudaFree(dev_pos);
 
   // TODO-2.1 TODO-2.3 - Free any additional buffers here.
+  cudaFree(dev_gridCellStartIndices);
+  cudaFree(dev_gridCellEndIndices);
+  cudaFree(dev_particleArrayIndices);
+  cudaFree(dev_particleGridIndices);
 }
 
 void Boids::unitTest() {
