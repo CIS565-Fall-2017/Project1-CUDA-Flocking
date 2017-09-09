@@ -36,15 +36,29 @@ Now, instead of checking against all other boids, each thread in our velocity up
 
 #### 3. Uniform Coherent Grid
 
+We can make the uniform grid spatial structure better by making memory accesses more coherent. The uniform scattered grid implementation does unecessary hopping and "pointer"-chasing. Instead of using an additional sorted buffer to find the index into our particle data, we can shuffle the particle data so that it is also sorted by grid cell index. This allows the GPU to load in and cache our position and velocity data for the boids resulting in fewer global memory calls. This small change ends up making signficant performance improvements.
+
 ### Performance Analysis
 
 #### Effect of boid count on framerate
 
+Tests were done using a block size of 128
+
+![](images/results/BoidsVSframerateData.png)
+
 ![](images/results/NumberofBoidsVSframerate_LineChart.png)
+
+##### DataPoints for Naive are missing beyond 100000 boids, and Uniform scattered grid beyond 1 Million as the CUDA kernels refused to launch with such high boid counts for those two approaches.
+
+As would be expected, as the number of boids increases, all 3 approaches suffer slowdowns. However, the line graph above clearly shows drastic things. We can see that using the Uniform Scattered Grid greatly improves performance and then the Uniform Coherent Grid surpasses even that in terms of performance. Intuitively, this makes sense. Using the Uniform Scattered Grid we greatly reduced the number of boids that have to be checked against for each boid. Making the boid data more memory coherent allowed us to access data(memory) faster because of better caching and reduction in the number of calls to global memory. This made Uniform Coherent Grids Perform that much better. 
 
 ![](images/results/NumberofBoidsVSframerate_BarChart.png)
 
+If we zoom into to the first few data points, we can notice a sudden jump that almost doubles our framerate while increasing the number of boids. At first glance, this seems kind of absurd, but it is more likely that in some situations, the number of boids do not map well into the memory of the underlying architecture which leads to a frustrating reduction in framerate.
+
 #### Effect of block size on framerate
+
+![](images/results/BlocksizeVSframerateData.png)
 
 ![](images/results/BlocksizeVSframerate.png)
 
