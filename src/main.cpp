@@ -14,7 +14,7 @@
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
-#define UNIFORM_GRID 0
+#define UNIFORM_GRID 1
 #define COHERENT_GRID 0
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
@@ -220,8 +220,13 @@ void initShaders(GLuint * program) {
     double timebase = 0;
     int frame = 0;
 
+	FILE * pFile;
+	pFile = fopen("Ffps.txt", "w");
+
     Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
                        // your CUDA development setup is ready to go.
+
+	//add timer 
 
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
@@ -231,9 +236,12 @@ void initShaders(GLuint * program) {
 
       if (time - timebase > 1.0) {
         fps = frame / (time - timebase);
+	    fprintf(pFile, "%f\n", fps);
+		
         timebase = time;
         frame = 0;
-      }
+      } 
+
 
       runCUDA();
 
@@ -259,6 +267,8 @@ void initShaders(GLuint * program) {
       glfwSwapBuffers(window);
       #endif
     }
+
+	fclose(pFile);
     glfwDestroyWindow(window);
     glfwTerminate();
   }
