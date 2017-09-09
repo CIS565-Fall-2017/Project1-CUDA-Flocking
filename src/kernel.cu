@@ -161,7 +161,7 @@ void Boids::initSimulation(int N)
 	checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
 
 	//Computing grid parameters
-	gridCellWidth = 1.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+	gridCellWidth = 0.5f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
 	int halfSideCount = (int)(scene_scale / gridCellWidth) + 1; //not sure why + 1
 	gridSideCount = 2 * halfSideCount;
 
@@ -486,11 +486,11 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
 	float distance = 0.0f;
 
-	for (int i = -1; i < 1; i++)
+	for (int i = -1; i <= 1; i++)
 	{
-		for (int j = -1; j < 1; j++)
+		for (int j = -1; j <= 1; j++)
 		{
-			for (int k = -1; k < 1; k++)
+			for (int k = -1; k <= 1; k++)
 			{
 				int _x = x + i;
 				int _y = y + j;
@@ -507,6 +507,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 				int boidGridCellindex = gridIndex3Dto1D(_x, _y, _z, gridResolution);
 
 				// Identify which cells may contain neighboring boids. This isn't always 8.
+				// SWITCHED to identifying upto 27 neighboring cells containing boids 
 				if (gridCellStartIndices[boidGridCellindex] != -1)
 				{
 					//we know the grid cell is empty if its start or end indices have been set to -1
@@ -612,11 +613,11 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 
 	// DIFFERENCE: For best results, consider what order the cells should be
 	// checked in to maximize the memory benefits of reordering the boids data.
-	for (int k = -1; k < 1; k++) //z axis
+	for (int k = -1; k <= 1; k++) //z axis
 	{
-		for (int j = -1; j < 1; j++) //y axis
+		for (int j = -1; j <= 1; j++) //y axis
 		{
-			for (int i = -1; i < 1; i++) //x axis
+			for (int i = -1; i <= 1; i++) //x axis
 			{
 				int _x = x + i;
 				int _y = y + j;
@@ -831,6 +832,7 @@ void Boids::endSimulation()
 	cudaFree(dev_coherentPos);
 	cudaFree(dev_coherentVel);
 }
+
 void Boids::unitTest()
 {
 	// Test unstable sort

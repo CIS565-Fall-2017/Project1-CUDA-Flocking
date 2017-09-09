@@ -9,8 +9,8 @@ Project 1 - Boids**
 
 ### Overview
 
-![](images/results/Boids.gif)
-###### (Run on GTX 1070(laptop GPU) with 10000 boids)
+![](images/results/Boids_flockingGif10fps.gif)
+###### (Run on GTX 1070(laptop GPU) with 25000 boids, recorded at 10fps due to file size limitations of github, actual solution runs much faster and smoother)
 
 This project served as an introduction to CUDA kernels, how to use them, and how to analyze their performance. This was done by implementing the Reynolds Boids algorithm in parallel on the GPU.
 
@@ -65,6 +65,12 @@ Tests were done using a 10000 boids
 Looking at the bar graph we can see that the blocksize really only effects one implementation, that is the Naive implementation beginning at a block size of 32. This might be because at 32 or fewer threads per block, there is only one warp (a group of 32 threads) in a block. These smaller blocks mean that we need a larger number of blocks. With every warp in its own block, we lose the performance benefits of shared memory within a block and instead need to allocate memory for each of our very many blocks.
 
 It is curious that the blocksize doesn't affect Uniform Scattered and Uniform Coherent Grid implementations too much. At a blocksize of 8 however, looking at the datatable we can see a drop in framerate for both of them although it isn't as drastic as it is for the Naive implementation. My guess is that with even smaller blocksizes we would see worse and worse framerates for all the reasons described above, for all the implementations.
+
+#### Effect of checking 27 gridcells instead of 8 with halfed grid cell size
+
+![](images/results/8VS27gridcells.png)
+
+As can be seen in the table above increasing the number of neighboring grid cells you are checking while appropriately changing the width of the cells, results in a lower framerate. This is because we have essentially just increased the overhead for maintaining the grid without a significant reduction in the number of boids we check. If we manipulate the ratio of 'cell width' to 'the number of neighboring grid cells that have to be checked' we could possibly result in cases where the 27 neighboring grid cells would result in a better framerate.
 
 #### Drastic fall in framerate
 
