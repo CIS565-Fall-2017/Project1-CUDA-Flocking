@@ -193,6 +193,10 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&dev_vel2_buffer, N * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_vel2_buffer failed!");
 
+  dev_thrust_particleArrayIndices=thrust::device_pointer_cast(dev_particleArrayIndices);
+  dev_thrust_particleGridIndices=thrust::device_pointer_cast(dev_particleGridIndices);
+
+
   cudaThreadSynchronize();
 }
 
@@ -648,8 +652,6 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 
   // - Unstable key sort using Thrust. A stable sort isn't necessary, but you
   //   are welcome to do a performance comparison.
-  dev_thrust_particleGridIndices = thrust::device_ptr<int>(dev_particleGridIndices);
-  dev_thrust_particleArrayIndices = thrust::device_ptr<int>(dev_particleArrayIndices);
   thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + N, dev_thrust_particleArrayIndices);
 
   kernResetIntBuffer << <N_BlocksPerGrid, threadsPerBlock >> >(gridCellCount, dev_gridCellStartIndices, -1);
@@ -696,8 +698,6 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 
   // - Unstable key sort using Thrust. A stable sort isn't necessary, but you
   //   are welcome to do a performance comparison.
-  dev_thrust_particleGridIndices = thrust::device_ptr<int>(dev_particleGridIndices);
-  dev_thrust_particleArrayIndices = thrust::device_ptr<int>(dev_particleArrayIndices);
   thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + N, dev_thrust_particleArrayIndices);
 
   // - Naively unroll the loop for finding the start and end indices of each
