@@ -54,38 +54,26 @@ As would be expected, as the number of boids increases, all 3 approaches suffer 
 
 ![](images/results/NumberofBoidsVSframerate_BarChart.png)
 
-If we zoom into to the first few data points, we can notice a sudden jump that almost doubles our framerate while increasing the number of boids. At first glance, this seems kind of absurd, but it is more likely that in some situations, the number of boids do not map well into the memory of the underlying architecture which leads to a frustrating reduction in framerate.
-
 #### Effect of block size on framerate
+
+Tests were done using a 10000 boids
 
 ![](images/results/BlocksizeVSframerateData.png)
 
 ![](images/results/BlocksizeVSframerate.png)
 
+Looking at the bar graph we can see that the blocksize really only effects one implementation, that is the Naive implementation beginning at a block size of 32. This might be because at 32 or fewer threads per block, there is only one warp (a group of 32 threads) in a block. These smaller blocks mean that we need a larger number of blocks. With every warp in its own block, we lose the performance benefits of shared memory within a block and instead need to allocate memory for each of our very many blocks.
+
+It is curious that the blocksize doesn't affect Uniform Scattered and Uniform Coherent Grid implementations too much. At a blocksize of 8 however, looking at the datatable we can see a drop in framerate for both of them although it isn't as drastic as it is for the Naive implementation. My guess is that with even smaller blocksizes we would see worse and worse framerates for all the reasons described above, for all the implementations.
+
 #### Drastic fall in framerate
 
 ![](images/results/NumberofBoidsVSframerate_LineChart_Weirdness.png)
 
-Note the large jumps at about (5300, 5500), (16400, 16500), (31200, 31300), and (43600, 43700). I think that this may be happening because in some situations, the number of boids does not map well to the underlying architecture and memory access becomes less efficient.
+If we zoom into to the first few data points, we can notice a sudden jump that almost doubles our framerate while increasing the number of boids. At first glance, this seems kind of absurd, but it is more likely that in some situations, the number of boids do not map well into the memory of the underlying architecture which leads to a frustrating reduction in framerate.
 
 ### Worst-Case Scenario for Uniform and Coherent Grids
 
-
-
-
-
-
-
-
-
-Trying to understand these results are likely specific to the architecture or the used GPU, so I will try to take this into accound in my explanation. The compute capability of my GPU (GT750M) is 3.0.
-
-**Grid dimensions**: For my GPU, I have a maximum of _2^(31) - 1_ blocks per grid in the x-dimension. Therefore, we likely don't ever hit a bottle neck in the number of blocks we can launch given that even at 16 threads per block, we only need 128 blocks.
-
-**Blocks per SM**: The GT750M can handle up to 16 blocks per multiprocessor. This means that, in the case of using 16 threads per block, we can only hold 16 of the 128 blocks in a single SM at a time.The GT750M also only has 2 multiprocessors, which means that 32 of the 128 blocks can be run at a time. This means that the GPU has to wait before it can load the rest of the blocks in, leading to a slower simulation. Once we raise the number of threads per block to 64, we create 32 blocks out of the 2048 boid threads. This allows us to launch all the threads at once on the GPU. This makes sense with our scattered and coherent results since there is a sharp framerate increase from a block size of 16 until 64, after which the increase begins to taper off.
-
-**Registers per block**: The GT750M has a maximum of 65536 registers per block. This might explain why the rate at which our framerate increases starts to fall off after hitting 64 threads per block. As we add more threads per block, we are expecting each block to handle more memory since we are adding more boid states to handle. This means that at 1024 threads per block, each boid only has 64 registers to use. If we exceed this, data in registers likely need to be moved to and from global memory, leading to an additional overhead in memory management.
-
-**Threads per SM**: The GT750M also only handles up to 2048 threads per SM. Considering the maximum number of threads per block we can use is 1024 and we only have 2048 boids in our simulation, we can easily run the simulation with two blocks in a single multiprocessor. This means that as the number of threads per block increases to 1024, the simulation speed will increase but not take a penalty from here.
+While trying to code this project, I ran into a ridiculous bug that made my Uniform Scattered and Uniform Coherent Grids perform significantly worse than my Naive implementation. I may have inadvertently coded up the worst-case scenario for both these methods. The issue arose because I had divided my boid's position along all three axes by the 'grid resolution'. And I then used that position to calculate an index into the gridcells. However, because I had divided by the 'grid resolution' the index that I obtained for every boid was the same index, i.e they were all in the same grid cell. This meant that I was basically running my Naive implementation inside one grid cell along with the overhead of creating and maintaining extra buffers for the grid structure, and doing a bunch of computation to determine which gridcells to look at. A stupid mistake but with mildly interesting insight
 
 If anyone reaches this far and happens to see any issues with my analysis or something I missed, please feel free to submit an issue and let me know!
