@@ -16,6 +16,6 @@ Project 1 - Flocking**
 
 ![](images/chart3.png)
 
-#Chart Showing With Visualization
+# Chart Showing With Visualization
 
 ![](images/chart4.png)
