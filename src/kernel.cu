@@ -274,9 +274,6 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 		percVel /= rule3Counter;
 	}
 	
-	// return perceivedCenter*rule1Scale;
-	// return c * rule2Scale;
-	// return percVel * rule3Scale;
  	return perceivedCenter*rule1Scale + c * rule2Scale + percVel * rule3Scale;
 }
 
@@ -353,11 +350,13 @@ __device__ int getGridCellQuadrant(float gridCellPos, float halfCellWidth) {
 	}
 }
 
+
+// Added 9/9/17
 __device__ void checkGridCellAndUpdateVel(int x, int y, int z, int N, int gridResolution, glm::vec3 gridMin,
 	float inverseCellWidth, float cellWidth,
 	int *gridCellStartIndices, int *gridCellEndIndices,
 	int *particleArrayIndices,
-	glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2) {
+	glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2, int iSelf) {
 	if (x < 0 || x > gridResolution || y < 0 || y > gridResolution || z < 0 || z > gridResolution) {
 		return;
 	}
@@ -365,6 +364,52 @@ __device__ void checkGridCellAndUpdateVel(int x, int y, int z, int N, int gridRe
 		int gridIndex = gridIndex3Dto1D(x, y, z, gridResolution);
 		int start = gridCellStartIndices[gridIndex];
 		int end = gridCellEndIndices[gridIndex];
+
+
+		glm::vec3 boidPos = pos[iSelf];
+		// Kind of repeated code
+		glm::vec3 perceivedCenter = glm::vec3(0.0f);
+		glm::vec3 c = glm::vec3(0.0f);
+		glm::vec3 percVel = glm::vec3(0.0f);;
+
+		int rule1Counter = 0;
+		int rule3Counter = 0;
+
+		for (int i = start - 1; i < end; i++) {
+			float distance = glm::distance(pos[i], boidPos);
+			// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+			if (i != iSelf && distance < rule1Distance) {
+				perceivedCenter += pos[i];
+				rule1Counter++;
+			}
+			// Rule 2
+			if (i != iSelf && distance < rule2Distance) {
+				c -= (pos[i] - boidPos);
+			}
+			// Rule 3
+			if (i != iSelf && distance < rule3Distance) {
+				percVel += vel1[i];
+				rule3Counter++;
+			}
+		}
+
+		if (rule1Counter != 0) {
+			perceivedCenter /= rule1Counter;
+			perceivedCenter = perceivedCenter - boidPos;
+		}
+		if (rule3Counter != 0) {
+			percVel /= rule3Counter;
+		}
+
+		// return perceivedCenter*rule1Scale;
+		// return c * rule2Scale;
+		// return percVel * rule3Scale;
+		return perceivedCenter*rule1Scale + c * rule2Scale + percVel * rule3Scale;
+	}
+	vel2[iSelf] = vel1[iSelf] + computeVelocityChange(N, index, pos, vel1);
+
+	if (glm::length(vel2[iSelf]) > maxSpeed) {
+		vel2[iSelf] = glm::normalize(vel2[index]) * maxSpeed;
 	}
 }
 
@@ -474,15 +519,6 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int qZ = getGridCellQuadrant(floatZ - z, cellWidth / 2.0);
 
 	// TODO: check grids at x + qX, y + qY z + qZ
-
-	if ((partPos.x - gridMin.x - x) < (cellWidth / 2.0)) {
-		if ((partPos.y - gridMin.y - y) < (cellWidth / 2.0)) {
-			if ((partPos.z - gridMin.z - z) < (cellWidth / 2.0)) {
-				int gridNum = gridIndex3Dto1D(x - 1, y - 1, z - 1, gridResolution);
-				
-			}
-		}
-	}
 	
 	
 }
