@@ -85,12 +85,9 @@ int *dev_gridCellEndIndices;   // to this cell?
 
 // TODO-2.3 - consider what additional buffers you might need to reshuffle
 // the position and velocity data to be coherent within cells.
-glm::vec3 *dev_pos_temp;
 
-thrust::device_ptr<glm::vec3> dev_thrust_pos_orig;
-thrust::device_ptr<glm::vec3> dev_thrust_vel_orig;
-thrust::device_ptr<glm::vec3> dev_thrust_pos_rear;
-thrust::device_ptr<glm::vec3> dev_thrust_vel_rear;
+thrust::device_ptr<glm::vec3> dev_thrust_pos;
+thrust::device_ptr<glm::vec3> dev_thrust_vel;
 
 // LOOK-2.1 - Grid parameters based on simulation parameters.
 // These are automatically computed for you in Boids::initSimulation
@@ -190,13 +187,8 @@ void Boids::initSimulation(int N) {
   dev_thrust_particleArrayIndices = thrust::device_ptr<int>(dev_particleArrayIndices);
   dev_thrust_particleGridIndices = thrust::device_ptr<int>(dev_particleGridIndices);
 
-  cudaMalloc((void**)&dev_pos_temp, N * sizeof(glm::vec3 *));
-  checkCUDAErrorWithLine("cudaMalloc dev_pos_temp failed!");
-
-  dev_thrust_pos_orig = thrust::device_ptr<glm::vec3>(dev_pos);
-  dev_thrust_pos_rear = thrust::device_ptr<glm::vec3>(dev_pos_temp);
-  dev_thrust_vel_orig = thrust::device_ptr<glm::vec3>(dev_vel1);
-  dev_thrust_vel_rear = thrust::device_ptr<glm::vec3>(dev_vel2);
+  dev_thrust_pos = thrust::device_ptr<glm::vec3>(dev_pos);
+  dev_thrust_vel = thrust::device_ptr<glm::vec3>(dev_vel1);
 
   cudaThreadSynchronize();
 }
@@ -659,25 +651,50 @@ void Boids::stepSimulationCoherentGrid(float dt) {
   cudaDeviceSynchronize();
 
   kernComputeIndices<<<fullBlocksPerGrid, blockSize>>>(numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
-  thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, dev_thrust_particleArrayIndices);
-  thrust::gather(dev_thrust_particleArrayIndices,
+  auto values = thrust::make_zip_iterator(thrust::make_tuple(dev_thrust_pos, dev_thrust_vel));
+  //thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, dev_thrust_particleArrayIndices);
+  thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, values);
+
+  /*int key[50];
+  glm::vec3 data[50];
+  glm::vec3 data2[50];
+  cudaMemcpy(key, dev_particleGridIndices, 50 * sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(data, dev_pos, 50 * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+  std::cout << "before:\n";
+  for (int i = 0; i < 50; ++i) {
+    std::cout << "key: " << key[i] << " val: (" << data[i].x << ", " << data[i].y << ", " << data[i].z << ")\n";
+  }
+  cudaMemcpy(data2, dev_vel1, 50 * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+  std::cout << "after:\n";
+  for (int i = 0; i < 50; ++i) {
+    std::cout << "val: (" << data2[i].x << ", " << data2[i].y << ", " << data2[i].z << ")\n";
+  }*/
+  /*thrust::gather(dev_thrust_particleArrayIndices,
                  dev_thrust_particleArrayIndices + numObjects,
                  dev_thrust_pos_orig, dev_thrust_pos_rear);
   thrust::gather(dev_thrust_particleArrayIndices,
                  dev_thrust_particleArrayIndices + numObjects,
                  dev_thrust_vel_orig, dev_thrust_vel_rear);
 
+  cudaMemcpy(data2, dev_pos_temp, 50 * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+  std::cout << "after:\n";
+  for (int i = 0; i < 50; ++i) {
+    std::cout << "val: (" << data2[i].x << ", " << data2[i].y << ", " << data2[i].z << ")\n";
+  }*/
+
   kernIdentifyCellStartEnd<<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
 
 
-  kernUpdateVelNeighborSearchCoherent<<<fullBlocksPerGrid, blockSize>>>(numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, gridCellWidth, dev_gridCellStartIndices, dev_gridCellEndIndices, dev_pos_temp, dev_vel2, dev_vel1);
+  kernUpdateVelNeighborSearchCoherent<<<fullBlocksPerGrid, blockSize>>>(numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, gridCellWidth, dev_gridCellStartIndices, dev_gridCellEndIndices, dev_pos, dev_vel1, dev_vel2);
 
 
   kernUpdatePos<<<fullBlocksPerGrid, blockSize>>>(numObjects, dt, dev_pos, dev_vel2);
 
-  dev_pos = dev_pos_temp;
-  dev_thrust_pos_orig = thrust::device_ptr<glm::vec3>(dev_pos);
-  dev_thrust_pos_rear = thrust::device_ptr<glm::vec3>(dev_pos_temp);
+//  dev_pos = dev_pos_temp;
+//  dev_thrust_pos_orig = thrust::device_ptr<glm::vec3>(dev_pos);
+//  dev_thrust_pos_rear = thrust::device_ptr<glm::vec3>(dev_pos_temp);
+  dev_vel1 = dev_vel2;
+  dev_thrust_vel = thrust::device_ptr<glm::vec3>(dev_vel1);
 }
 
 void Boids::endSimulation() {
@@ -694,21 +711,23 @@ void Boids::unitTest() {
   // test unstable sort
   int *dev_intKeys;
   int *dev_intValues;
+  int *dev_intValues2;
   int N = 10;
 
   int *intKeys = new int[N];
   int *intValues = new int[N];
+  int *intValues2 = new int[N];
 
-  intKeys[0] = 0; intValues[0] = 0;
-  intKeys[1] = 1; intValues[1] = 1;
-  intKeys[2] = 0; intValues[2] = 2;
-  intKeys[3] = 3; intValues[3] = 3;
-  intKeys[4] = 0; intValues[4] = 4;
-  intKeys[5] = 2; intValues[5] = 5;
-  intKeys[6] = 2; intValues[6] = 6;
-  intKeys[7] = 0; intValues[7] = 7;
-  intKeys[8] = 5; intValues[8] = 8;
-  intKeys[9] = 6; intValues[9] = 9;
+  intKeys[0] = 0; intValues[0] = 0; intValues2[0] = 10;
+  intKeys[1] = 1; intValues[1] = 1; intValues2[1] = 11;
+  intKeys[2] = 0; intValues[2] = 2; intValues2[2] = 12;
+  intKeys[3] = 3; intValues[3] = 3; intValues2[3] = 13;
+  intKeys[4] = 0; intValues[4] = 4; intValues2[4] = 14;
+  intKeys[5] = 2; intValues[5] = 5; intValues2[5] = 15;
+  intKeys[6] = 2; intValues[6] = 6; intValues2[6] = 16;
+  intKeys[7] = 0; intValues[7] = 7; intValues2[7] = 17;
+  intKeys[8] = 5; intValues[8] = 8; intValues2[8] = 18;
+  intKeys[9] = 6; intValues[9] = 9; intValues2[9] = 19;
 
   cudaMalloc((void**)&dev_intKeys, N * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_intKeys failed!");
@@ -716,40 +735,53 @@ void Boids::unitTest() {
   cudaMalloc((void**)&dev_intValues, N * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_intValues failed!");
 
+  cudaMalloc((void**)&dev_intValues2, N * sizeof(int));
+  checkCUDAErrorWithLine("cudaMalloc dev_intValues2 failed!");
+
   dim3 fullBlocksPerGrid((N + blockSize - 1) / blockSize);
 
   std::cout << "before unstable sort: " << std::endl;
   for (int i = 0; i < N; i++) {
     std::cout << "  key: " << intKeys[i];
-    std::cout << " value: " << intValues[i] << std::endl;
+    std::cout << " value: " << intValues[i];
+    std::cout << " value2: " << intValues2[i] << std::endl;
   }
 
   // How to copy data to the GPU
   cudaMemcpy(dev_intKeys, intKeys, sizeof(int) * N, cudaMemcpyHostToDevice);
   cudaMemcpy(dev_intValues, intValues, sizeof(int) * N, cudaMemcpyHostToDevice);
+  cudaMemcpy(dev_intValues2, intValues2, sizeof(int) * N, cudaMemcpyHostToDevice);
 
   // Wrap device vectors in thrust iterators for use with thrust.
   thrust::device_ptr<int> dev_thrust_keys(dev_intKeys);
   thrust::device_ptr<int> dev_thrust_values(dev_intValues);
+  thrust::device_ptr<int> dev_thrust_values2(dev_intValues2);
+  
+  auto zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_thrust_values, dev_thrust_values2));
   // LOOK-2.1 Example for using thrust::sort_by_key
-  thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + N, dev_thrust_values);
+  //thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + N, dev_thrust_values);
+  thrust::sort_by_key(dev_thrust_keys, dev_thrust_keys + N, zipped);
 
   // How to copy data back to the CPU side from the GPU
   cudaMemcpy(intKeys, dev_intKeys, sizeof(int) * N, cudaMemcpyDeviceToHost);
   cudaMemcpy(intValues, dev_intValues, sizeof(int) * N, cudaMemcpyDeviceToHost);
+  cudaMemcpy(intValues2, dev_intValues2, sizeof(int) * N, cudaMemcpyDeviceToHost);
   checkCUDAErrorWithLine("memcpy back failed!");
 
   std::cout << "after unstable sort: " << std::endl;
   for (int i = 0; i < N; i++) {
     std::cout << "  key: " << intKeys[i];
-    std::cout << " value: " << intValues[i] << std::endl;
+    std::cout << " value: " << intValues[i];
+    std::cout << " value2: " << intValues2[i] << std::endl;
   }
 
   // cleanup
   delete[] intKeys;
   delete[] intValues;
+  delete[] intValues2;
   cudaFree(dev_intKeys);
   cudaFree(dev_intValues);
+  cudaFree(dev_intValues2);
   checkCUDAErrorWithLine("cudaFree failed!");
   return;
 }
