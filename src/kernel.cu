@@ -540,10 +540,10 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 			for (int k = minGridZ; k <= maxGridZ; k++)
 			{
 				int gridIndex = gridIndex3Dto1D(i, j, k, gridResolution);
+				int startIndex = gridCellStartIndices[gridIndex];
 
-				if (gridCellStartIndices[gridIndex] != -1)
+				if (startIndex != -1)
 				{
-					int startIndex = gridCellStartIndices[gridIndex];
 					int endIndex = gridCellEndIndices[gridIndex];
 
 					for (int h = startIndex; h <= endIndex; h++)
@@ -605,8 +605,6 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	{
 		vel2[index] = glm::normalize(vel2[index]) * maxSpeed;
 	}
-	
-
 }
 
 __global__ void kernUpdateVelNeighborSearchCoherent(
@@ -668,10 +666,10 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 			for (int k = minGridZ; k <= maxGridZ; k++)
 			{
 				int gridIndex = gridIndex3Dto1D(i, j, k, gridResolution);
+				int startIndex = gridCellStartIndices[gridIndex];
 
-				if (gridCellStartIndices[gridIndex] != -1)
+				if (startIndex != -1)
 				{
-					int startIndex = gridCellStartIndices[gridIndex];
 					int endIndex = gridCellEndIndices[gridIndex];
 
 					for (int h = startIndex; h <= endIndex; h++)
@@ -720,6 +718,102 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 		percevied_velocity /= alignment_counter;
 		alignmentVel = percevied_velocity * rule3Scale;
 	}
+	
+	// Compute a new velocity based on pos and vel1
+	vel2[index] = vel1[index] + cohesionVel + separationVel + alignmentVel;
+
+	// Clamp the speed
+	// Record the new velocity into vel2. Question: why NOT vel1?
+	float speed = glm::length(vel2[index]);
+	if (speed > maxSpeed)
+	{
+		vel2[index] = glm::normalize(vel2[index]) * maxSpeed;
+	}
+}
+
+__global__ void kernUpdateVelNeighborSearchSharedMemCoherent(
+	int N, int gridResolution, glm::vec3 gridMin,
+	float inverseCellWidth, float cellWidth,
+	int *gridCellStartIndices, int *gridCellEndIndices,
+	glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2)
+{
+	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (index >= N) {
+		return;
+	}
+		
+	__shared__ int sGridCell[8192];
+
+	glm::vec3 thisPos = pos[index];
+
+	glm::vec3 percevied_center = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 c = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 percevied_velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	glm::vec3 cohesionVel;
+	glm::vec3 separationVel;
+	glm::vec3 alignmentVel;
+
+	int center_counter = 0;
+	int alignment_counter = 0;
+
+	sGridCell[threadIdx.x] = index;
+	__syncthreads();
+
+	for (int i = 0; i < blockDim.x; i++)
+	{
+		int newIndex = sGridCell[i];
+		if (newIndex != index)
+		{
+			glm::vec3 boidPos = pos[newIndex];
+
+			float distance = glm::distance(thisPos, boidPos);
+
+			if (distance <= rule1Distance)
+			{
+				percevied_center += boidPos;
+				center_counter++;
+			}
+
+			if (distance <= rule2Distance)
+			{
+				c += (thisPos - boidPos);
+			}
+
+
+			if (distance <= rule3Distance)
+			{
+				percevied_velocity += vel1[newIndex];
+				alignment_counter++;
+			}
+		}
+	}	
+
+	if (center_counter > 0)
+	{
+		percevied_center /= center_counter;
+		cohesionVel = (percevied_center - thisPos) * rule1Scale;
+	}
+
+	separationVel = c * rule2Scale;
+
+	if (alignment_counter > 0)
+	{
+		percevied_velocity /= alignment_counter;
+		alignmentVel = percevied_velocity * rule3Scale;
+	}
+	/*
+	// Compute a new velocity based on pos and vel1
+	glm::vec3 newVel = vel1[index] + cohesionVel + separationVel + alignmentVel;
+
+	// Clamp the speed
+	// Record the new velocity into vel2. Question: why NOT vel1?
+	float speed = glm::length(newVel);
+	if (speed > maxSpeed)
+		vel2[index] = glm::normalize(newVel) * maxSpeed;
+	else
+		vel2[index] = newVel;
+	*/
 
 	// Compute a new velocity based on pos and vel1
 	vel2[index] = vel1[index] + cohesionVel + separationVel + alignmentVel;
@@ -732,6 +826,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 		vel2[index] = glm::normalize(vel2[index]) * maxSpeed;
 	}
 }
+
 
 /**
 * Step the entire N-body simulation by `dt` seconds.
@@ -824,6 +919,7 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	checkCUDAErrorWithLine("kernIdentifyCellStartEnd failed!");
 
 	kernReshuffleIndices <<<fullBlocksPerGrid, blockSize>>> (numObjects, dev_particleArrayIndices, dev_pos, dev_vel1, dev_vel2, dev_coherentPos, dev_coherentVel1, dev_coherentVel2);
+	checkCUDAErrorWithLine("kernReshuffleIndices failed!");
 
 	cudaMemcpy(dev_pos, dev_coherentPos, sizeof(glm::vec3) * numObjects, cudaMemcpyHostToHost);
 	cudaMemcpy(dev_vel1, dev_coherentVel1, sizeof(glm::vec3) * numObjects, cudaMemcpyHostToHost);
@@ -831,10 +927,51 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 
 	kernUpdateVelNeighborSearchCoherent << <fullBlocksPerGrid, blockSize >> > (numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, gridCellWidth,
 		dev_gridCellStartIndices, dev_gridCellEndIndices, dev_pos, Boids::isVel1Used ? dev_vel1 : dev_vel2, Boids::isVel1Used ? dev_vel2 : dev_vel1);
+	checkCUDAErrorWithLine("kernUpdateVelNeighborSearchCoherent failed!");
+
 	kernUpdatePos <<<fullBlocksPerGrid, blockSize >>>(numObjects, dt, dev_pos, Boids::isVel1Used ? dev_vel2 : dev_vel1);
+	checkCUDAErrorWithLine("kernUpdatePos failed!");
 
 	Boids::isVel1Used = !Boids::isVel1Used;
 
+}
+
+//Add fast nearest neighbor search using shared memory and the uniform grid.
+void Boids::stepSimulationSharedMemCoherentGrid(float dt)
+{
+	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+
+	kernComputeIndices << <fullBlocksPerGrid, blockSize >> > (numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
+	checkCUDAErrorWithLine("kernComputeIndices failed!");
+
+	thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, dev_thrust_particleArrayIndices);
+
+	dim3 fullBlocksPerGridCells((gridCellCount + blockSize - 1) / blockSize);
+
+	kernResetIntBuffer << <fullBlocksPerGridCells, blockSize >> > (gridCellCount, dev_gridCellStartIndices, -1);
+	checkCUDAErrorWithLine("kernResetIntBuffer failed!");
+	kernResetIntBuffer << <fullBlocksPerGridCells, blockSize >> > (gridCellCount, dev_gridCellEndIndices, -1);
+	checkCUDAErrorWithLine("kernResetIntBuffer failed!");
+
+
+	kernIdentifyCellStartEnd << <fullBlocksPerGrid, blockSize >> > (numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
+	checkCUDAErrorWithLine("kernIdentifyCellStartEnd failed!");
+
+	kernReshuffleIndices << <fullBlocksPerGrid, blockSize >> > (numObjects, dev_particleArrayIndices, dev_pos, dev_vel1, dev_vel2, dev_coherentPos, dev_coherentVel1, dev_coherentVel2);
+	checkCUDAErrorWithLine("kernReshuffleIndices failed!");
+
+	cudaMemcpy(dev_pos, dev_coherentPos, sizeof(glm::vec3) * numObjects, cudaMemcpyHostToHost);
+	cudaMemcpy(dev_vel1, dev_coherentVel1, sizeof(glm::vec3) * numObjects, cudaMemcpyHostToHost);
+	cudaMemcpy(dev_vel2, dev_coherentVel2, sizeof(glm::vec3) * numObjects, cudaMemcpyHostToHost);
+
+	kernUpdateVelNeighborSearchSharedMemCoherent << <fullBlocksPerGrid, blockSize>> > (numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, gridCellWidth,
+		dev_gridCellStartIndices, dev_gridCellEndIndices, dev_pos, Boids::isVel1Used ? dev_vel1 : dev_vel2, Boids::isVel1Used ? dev_vel2 : dev_vel1);
+	checkCUDAErrorWithLine("kernUpdateVelNeighborSearchSharedMemCoherent failed!");
+
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> >(numObjects, dt, dev_pos, Boids::isVel1Used ? dev_vel2 : dev_vel1);
+	checkCUDAErrorWithLine("kernUpdatePos failed!");
+
+	Boids::isVel1Used = !Boids::isVel1Used;
 }
 
 void Boids::endSimulation() {
