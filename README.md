@@ -72,8 +72,10 @@ It is curious that the blocksize doesn't affect Uniform Scattered and Uniform Co
 
 If we zoom into to the first few data points, we can notice a sudden jump that almost doubles our framerate while increasing the number of boids. At first glance, this seems kind of absurd, but it is more likely that in some situations, the number of boids do not map well into the memory of the underlying architecture which leads to a frustrating reduction in framerate.
 
-### Worst-Case Scenario for Uniform and Coherent Grids
+#### Worst-Case Scenario for Uniform and Coherent Grids
 
-While trying to code this project, I ran into a ridiculous bug that made my Uniform Scattered and Uniform Coherent Grids perform significantly worse than my Naive implementation. I may have inadvertently coded up the worst-case scenario for both these methods. The issue arose because I had divided my boid's position along all three axes by the 'grid resolution'. And I then used that position to calculate an index into the gridcells. However, because I had divided by the 'grid resolution' the index that I obtained for every boid was the same index, i.e they were all in the same grid cell. This meant that I was basically running my Naive implementation inside one grid cell along with the overhead of creating and maintaining extra buffers for the grid structure, and doing a bunch of computation to determine which gridcells to look at. A stupid mistake but with mildly interesting insight
+While trying to code this project, I ran into a ridiculous bug that made my Uniform Scattered and Uniform Coherent Grids perform significantly worse than my Naive implementation. I may have inadvertently coded up the worst-case scenario for both these methods. The issue arose because I had divided my boid's position along all three axes by the 'grid resolution'. And I then used that position to calculate an index into the gridcells. However, because I had divided by the 'grid resolution' the index that I obtained for every boid was the same index, i.e they were all in the same grid cell. This meant that I was basically running my Naive implementation inside one grid cell along with the overhead of creating and maintaining extra buffers for the grid structure, and doing a bunch of computation to determine which gridcells to look at. A stupid mistake but with mildly interesting insight.
 
-If anyone reaches this far and happens to see any issues with my analysis or something I missed, please feel free to submit an issue and let me know!
+### Feedback
+
+If anyone reaches this far and happens to see any issues with my analysis or something else that I missed, please feel free to submit an issue and let me know! Any other feedback is also appreciated.
