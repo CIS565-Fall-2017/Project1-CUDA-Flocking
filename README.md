@@ -101,23 +101,38 @@ Block Size 512, 5000 boids
 
 When comparing the results of block size = 128 and also block size = 512, I did not see any significant differences. So I think the procedures that do not exceed the maximum storage size of each SM or SP on the GPU, it should not make great differences. But I think there should be a best block size that can make use of all the shared and registers and also global memories on the GPU and attains the best performance when we slightly increase the block size. However, if the block sizes are chosen to be the multiple of 32, which is the warp size for almost all the GPUs, it would guarantee better performance. 
 
+
+26 Or 8 Neighbors? 
+
+*Based on scatter searching.*
+
+![](https://i.imgur.com/jPMtUyB.jpg)
+
+As shown in the graph, I did not notice any apparent differences between 26 grid searching and 8 grid searching. I think the problem lies in that in the 8 grid searching kernels, there are too many if-else, so that not all the threads in a warp can be processed by the same command. Therefore the performance was greatly decreased. 
+
 # 5. Questions #
 
 
 
-1. **For each implementation, how does changing the number of boids affect performance? Why do you think this is?**
+
+
+-  **For each implementation, how does changing the number of boids affect performance? Why do you think this is?**
 
 For naive searching, increasing the number of boids will significantly decrease the performance. However, the decreasing of performance for other two searching methods are not apparent, especially when there is a maximum fps during the visualization.
 
 
-1. **For each implementation, how does changing the block count and block size affect performance? Why do you think this is?**
+
+-  **For each implementation, how does changing the block count and block size affect performance? Why do you think this is?**
 
 The maximum of block size would be 1024, but I cut the half of it and change 128 to 512 because I did not want my GPU to break. In my experiment, the performance does not make any significant difference. I think it should be that the block size I was testing did not exceed the maximum storage on GPU. If I used more memory space and more threads per block, I will reach some threshold where performance begin to drop significantly. 
 
-1. **For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?**
+
+
+-  **For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?**
 
 I thought it should be faster. But it turned out that it is not super fast, or sometimes it is slower. I think it may because of the way I implemented it. Since I copy the speed and position according to the boidIndex we have sorted into two other arrays. I think the memory copying and allocation of these two arrays takes extra times. Also, since I will have two more "mallocs" and "frees" plus one more "memcpy" for each loop, I think this would make the coherent searching slower. 
 
-1. **Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
+
+-  **Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
 
 I have tested. But I don't think 8 neighboring wins absolutely. Since I have tried my best the improve the performance of 8 neighbors. But we need to many if-elses for every boids we want to check (I tried my best to add three more if -elseif-elses than scatter). If-else sometime will cut the performance half, especially when they are not for checking the brim conditions. Therefore, I did not notice significant changes.

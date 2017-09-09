@@ -774,9 +774,9 @@ __device__ glm::vec3 UpdateVelocity8Grids(int N, int index, int boidIndex, const
 		zEnd = gridIdx3Z;
 	}
 
-	for (int i = zStart;i <= zEnd;i++)
+	for (int i = xStart;i <= xEnd;i++)
 	{
-		for (int j = yStart;j <= yStart;j++)
+		for (int j = yStart;j <= yEnd;j++)
 		{
 			for (int k = zStart;k <= zEnd;k++)
 			{
@@ -786,9 +786,9 @@ __device__ glm::vec3 UpdateVelocity8Grids(int N, int index, int boidIndex, const
 					int gridBoidStartIndex = gridCellIndex[testGridIndexBeighbor]; 
 					if (gridBoidStartIndex != -1)
 					{
-						int startIndex = gridCellStartIndices[gridBoidStartIndex];
-						int endIndex = gridCellEndIndices[startIndex];
-						for (int l = startIndex;l <= endIndex;l++)
+						//int startIndex = gridCellStartIndices[gridBoidStartIndex];
+						int endIndex = gridCellEndIndices[gridBoidStartIndex];
+						for (int l = gridBoidStartIndex;l <= endIndex;l++)
 						{
 							int testBoidIndex = particleArrayIndices[l];
 							glm::vec3 testPos = pos[testBoidIndex];
