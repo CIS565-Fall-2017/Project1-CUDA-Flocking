@@ -15,10 +15,13 @@
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
 #define UNIFORM_GRID 1
-#define COHERENT_GRID 0
+#define COHERENT_GRID 1
+
+#define PAST_FPS_AVG_COUNT 10
+#define INV_PAST_FPS_AVG_COUNT 0.1
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 5000;
+const int N_FOR_VIS = 10000;
 const float DT = 0.2f;
 
 /**
@@ -219,6 +222,9 @@ void initShaders(GLuint * program) {
     double fps = 0;
     double timebase = 0;
     int frame = 0;
+    double pastFps[PAST_FPS_AVG_COUNT] = { 0 };
+    int pastFpsIdx = 0;
+    double pastFpsAvg;
 
     Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
                        // your CUDA development setup is ready to go.
@@ -233,6 +239,14 @@ void initShaders(GLuint * program) {
         fps = frame / (time - timebase);
         timebase = time;
         frame = 0;
+
+        pastFps[pastFpsIdx++] = fps;
+        pastFpsIdx %= PAST_FPS_AVG_COUNT;
+        pastFpsAvg = 0.0;
+        for (int i = 0; i < PAST_FPS_AVG_COUNT; ++i) {
+          pastFpsAvg += pastFps[i];
+        }
+        pastFpsAvg *= INV_PAST_FPS_AVG_COUNT;
       }
 
       runCUDA();
@@ -241,7 +255,7 @@ void initShaders(GLuint * program) {
       ss << "[";
       ss.precision(1);
       ss << std::fixed << fps;
-      ss << " fps] " << deviceName;
+      ss << " fps (avg: " << std::fixed << pastFpsAvg << ")] " << deviceName;
       glfwSetWindowTitle(window, ss.str().c_str());
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
