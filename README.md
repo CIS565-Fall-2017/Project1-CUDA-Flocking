@@ -48,7 +48,7 @@ FPS has a significant drop with visualization on. It is clear that copy data to 
 
 # Performance with different gridCellWidth
 
-![](images/chart4.png)
+![](images/chart5.png)
 
 * Test Method:
 
