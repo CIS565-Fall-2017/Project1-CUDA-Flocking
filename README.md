@@ -14,8 +14,10 @@ A screenshot of the boids:
 
 Framerate change with increasing # of boids for naive, scattered uniform grid, and coherent uniform grid (with and without visualization)
 
+![](images/Framerate change with increasing boids for naive, scattered uniform grid, and coherent uniform grid with visualize.png)
+
 Boids | Navie | Scattered uniform grid | Coherent uniform grid
---- | --- | --- | --- 
+:---|:---:|:---:|:---:
 5000 | 156.2 | 397 | 401.8
 10000 | 55.7 | 481.6 | 455.9
 50000 | 2.8 | 278.6 | 341.1
