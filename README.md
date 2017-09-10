@@ -6,6 +6,11 @@ Project 1 - Flocking**
 
 
 ![](images/demo2-10000.gif)
+###### (Run with 10,000 boids)
+
+
+![](images/demo5-100000.gif)
+###### (Run with 100,000 boids)
 
 
 ## Project Overview
