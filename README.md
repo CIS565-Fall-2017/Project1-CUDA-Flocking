@@ -57,19 +57,17 @@ The change of block size does not affect the performance dramatically, but we ca
 
 * For each implementation, how does changing the number of boids affect performance? Why do you think this is?
 
-⋅⋅⋅As the number of boids grows, the FPS will decrease, that's because more data needs to be computed if the number of boids increase.
+As the number of boids grows, the FPS will decrease, that's because more data needs to be computed if the number of boids increase.
 
 * For each implementation, how does changing the block count and block size affect performance? Why do you think this is?
 
-⋅⋅⋅The change of block count and block size does not affect the performance dramatically, but it has some improvement before 32.
+The change of block count and block size does not affect the performance dramatically, but it has some improvement before 32.
 
 * For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?
 
-⋅⋅⋅Yes. We can see the great improvement when the number of boids > 50000. Coherent uniform grid sort the array to skip a searching step to improve the performance.
+Yes. We can see the great improvement when the number of boids > 50000. Coherent uniform grid sort the array to skip a searching step to improve the performance.
 
 * Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?
-
-⋅⋅⋅Yes. 
 
 ![](images/27vs8.png)
 
@@ -81,4 +79,4 @@ Boids | 27 Cells | 8 Cells
 100000 | 303.2 | 185.2
 500000 | 97.8 | 35.3
 
-⋅⋅⋅Yes. When the boids' amount is huge, though 27 cells needs to iterates more neighbors, the number of boids needs to be interated is less, so a large amount of time of computing distance is saved.
+Yes. When the boids' amount is huge, though 27 cells needs to iterates more neighbors, the number of boids needs to be interated is less, so a large amount of time of computing distance is saved.
