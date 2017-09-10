@@ -67,7 +67,7 @@ It seems that the increasing of block size does not affect fps too much.
   <img src="images/time-boids-nonvisual.png">
 </p>
 
-These 2 figures show that the  Step simulation time grows as the # of boids grows. The Naive method become much more slower when the # of boids is big enough. And the advantage of the coherent method is more obvious for large # of boids.
+These 2 figures show that the  step simulation time grows as the # of boids grows. The Naive method become much more slower when the # of boids is big enough. And the advantage of the coherent method is more obvious for large # of boids.
 
 ### 4. Step simulation time with increasing block size
 
