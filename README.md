@@ -4,13 +4,14 @@ Project 1 - Flocking**
 * Mohamed Soudy
 * Tested on: Windows 10 Enterprise, i7 @ 2.7 GHz 16GB, GT 650M 1024 MB
 
-### Result
+## Result
+
+![](images/boids.gif)
+
+## Performance Analysis
 
 
-### Performance Analysis
-
-
-### Frames per second vs number of boids
+### Frames Per Second vs Number of Boids
 
 ![](images/fps_boid_table.png)
 
@@ -21,10 +22,12 @@ is quite drastic. The coherent grid is way faster than both the naive and unifor
 
 Increasing the number of boids in all implementations does in fact affect performance. However, with the coherent grid, the system can handle more than 100000 boids, whilst the FPS of the other implementations drop below 10.
 
-### Frames per second vs block size
+### Frames Per Second vs Block Size
 
 ![](images/fps_block_table.png)
 
 ![](images/fps_block_chart.png)
 
-Initially, varying the block size improves performance. However, increasing the block size above 32 stops affecting performance which may be because the warp size is 32. 
+Initially, varying the block size improves performance for all of the implementations. However, increasing the block size above 32 stops affecting performance which may be because the warp size is 32. 
+
+Changing the cell width and checking 27 neighbors instead of 8 negatively impacts performance in naive, uniform and coherent because we're checking more neighbors for every boid.
