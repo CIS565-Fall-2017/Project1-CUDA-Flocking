@@ -429,19 +429,10 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   if (index >= N) {
     return;
   }
-  //glm::vec3 newVel = glm::normalize(gridMin - pos[particleArrayIndices[index]]);
-  //vel2[particleArrayIndices[index]] = newVel;
   
   glm::vec3 boidPos = pos[particleArrayIndices[index]];
-  /*int bx = (int) boidPos.x;
-  int by = (int) boidPos.y;
-  int bz = (int) boidPos.z;
-  printf("%d\n", boidPos.x);
-  printf("%d\n", boidPos.y);
-  printf("%d\n", boidPos.z);
-  printf("%d\n", index);*/
   glm::vec3 index3D = floor((boidPos - gridMin) * inverseCellWidth);
-  glm::vec3 gridCellCenter = (index3D * cellWidth - gridMin) + glm::vec3(cellWidth) * 0.5f;
+  glm::vec3 gridCellCenter = (index3D + glm::vec3(0.5f)) * cellWidth;
   glm::vec3 gridOctant = glm::sign(boidPos - gridCellCenter);
 
   glm::vec3 perceivedCenter(0);
@@ -460,18 +451,19 @@ __global__ void kernUpdateVelNeighborSearchScattered(
       {
         glm::vec3 currentGridIndex = glm::vec3(x * gridOctant.x, y * gridOctant.y, z * gridOctant.z) + index3D;
 
-        if ((((int) currentGridIndex.x > 0 && (int) currentGridIndex.x < gridResolution) &&
-             ((int) currentGridIndex.y > 0 && (int) currentGridIndex.y < gridResolution)) &&
-             ((int) currentGridIndex.z > 0 && (int) currentGridIndex.z < gridResolution))
+        if (((((int) currentGridIndex.x) > 0 && ((int) currentGridIndex.x) < gridResolution) &&
+             (((int) currentGridIndex.y) > 0 && ((int) currentGridIndex.y) < gridResolution)) &&
+             (((int) currentGridIndex.z) > 0 && ((int) currentGridIndex.z) < gridResolution))
         {
           int index1D = gridIndex3Dto1D(x, y, z, gridResolution);
           for (int g = gridCellStartIndices[index1D]; g <= gridCellEndIndices[index1D]; ++g)
           {
+            if (g < 0) break;
             int currentBoid = particleArrayIndices[g];
             glm::vec3 currentBoidPos = pos[currentBoid];
 
             // Boid
-            if (currentBoid != index)
+            if (currentBoid != particleArrayIndices[index])
             {
               glm::vec3 currentDisplacement = currentBoidPos - boidPos;
               float displacementMagn = glm::length(currentDisplacement);
@@ -516,7 +508,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   if (r1_neighbors + r2_neighbors + r3_neighbors > 0)
   {
     vel2[particleArrayIndices[index]] =
-      (perceivedCenter - pos[particleArrayIndices[index]]) * rule1Scale +
+                               (perceivedCenter - boidPos) * rule1Scale +
                                          avoidanceVelocity * rule2Scale +
                                          perceivedVelocity * rule3Scale;
   }
