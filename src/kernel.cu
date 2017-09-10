@@ -37,7 +37,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 *****************/
 
 /*! Block size used for CUDA kernel launch. */
-#define blockSize 64 //32 // 128
+#define blockSize 128 //32 // 64 // 256
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
@@ -461,15 +461,24 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
 	int GridCellIndex = gridIndex3Dto1D(x_int, y_int, z_int, gridResolution);
 
-  // - Identify which cells may contain neighbors. This isn't always 8.
 	int x_offset = ((x - (float)x_int) > 0.5f) ? 1 : -1;
 	int y_offset = ((y - (float)y_int) > 0.5f) ? 1 : -1;
 	int z_offset = ((z - (float)z_int) > 0.5f) ? 1 : -1;
 
+	int TargetCellIndexArray[8];
+
+	//---------------------------------------------------------------------
+	// ---------------- Add boundary check idea ---------------------------
+	//---------------------------------------------------------------------
+	// - Identify which cells may contain neighbors. This isn't always 8.
+
 	// boundary conidition, we may only need to consider 4 (1) cell(s)
 	// here assumes -100 <= (x,y,z) <= 100
-	// attention gridMin here is (-110,-110,-110)
+	// attention, gridMin here is (-110,-110,-110)
 	// all gridResolution should be 22
+
+	int TargetCellCount = 0;
+
 	if ((x_int == 1 && x_offset == -1) || (x_int == gridResolution - 1)) { x_offset = 0; }
 	else if (x_int == gridResolution - 2 && x_offset == 1) { x_offset = 0; }
 
@@ -479,31 +488,62 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	if ((z_int == 1 && z_offset == -1) || (z_int == gridResolution - 1)) { z_offset = 0; }
 	else if (z_int == gridResolution - 2 && z_offset == 1) { z_offset = 0; }
 
-	int TargetCellIndexArray[8];
-	int TargetCellCount = 0;
-
 	TargetCellIndexArray[TargetCellCount++] = GridCellIndex;
 	if (x_offset) {
 		TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int + x_offset, y_int, z_int, gridResolution);
 	}
+
 	if (y_offset) {
 		TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int, gridResolution);
 		if (x_offset) {
 			TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int + x_offset, y_int + y_offset, z_int, gridResolution);
 		}
+		if (z_offset){
+			TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int + z_offset, gridResolution);
+		}
 	}
+
 	if (z_offset) {
 		TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int, y_int, z_int + z_offset, gridResolution);
 		if (x_offset) {
 			TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int + x_offset, y_int, z_int + z_offset, gridResolution);
+			if (y_offset) {
+				TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int + x_offset, y_int + y_offset, z_int + z_offset, gridResolution);
+			}
 		}
 	}
-	if (y_offset && z_offset) {
-		TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int + z_offset, gridResolution);
-		if (x_offset) {
-			TargetCellIndexArray[TargetCellCount++] = gridIndex3Dto1D(x_int + x_offset, y_int + y_offset, z_int + z_offset, gridResolution);
-		}
+	//---------------------------------------------------------------------
+	//---------------------------------------------------------------------
+
+
+	//---------------------------------------------------------------------
+	//----------------- no boundary check idea ----------------------------
+	//---------------------------------------------------------------------
+	// - Suppose neighboring cells must be 8
+	/*if (x_offset == -1) {
+		TargetCellIndexArray[0] = gridIndex3Dto1D(x_int - 1, y_int, z_int, gridResolution);
+		TargetCellIndexArray[1] = gridIndex3Dto1D(x_int, y_int, z_int, gridResolution);
+		TargetCellIndexArray[2] = gridIndex3Dto1D(x_int - 1, y_int + y_offset, z_int, gridResolution);
+		TargetCellIndexArray[3] = gridIndex3Dto1D(x_int, y_int+ y_offset, z_int, gridResolution);
+		TargetCellIndexArray[4] = gridIndex3Dto1D(x_int - 1, y_int, z_int + z_offset, gridResolution);
+		TargetCellIndexArray[5] = gridIndex3Dto1D(x_int, y_int, z_int + z_offset, gridResolution);
+		TargetCellIndexArray[6] = gridIndex3Dto1D(x_int - 1, y_int + y_offset, z_int + z_offset, gridResolution);
+		TargetCellIndexArray[7] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int + z_offset, gridResolution);
 	}
+
+	if (x_offset == 1) {
+		TargetCellIndexArray[0] = gridIndex3Dto1D(x_int, y_int, z_int, gridResolution);
+		TargetCellIndexArray[1] = gridIndex3Dto1D(x_int + 1, y_int, z_int, gridResolution);
+		TargetCellIndexArray[2] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int, gridResolution);
+		TargetCellIndexArray[3] = gridIndex3Dto1D(x_int + 1, y_int + y_offset, z_int, gridResolution);
+		TargetCellIndexArray[4] = gridIndex3Dto1D(x_int, y_int, z_int + z_offset, gridResolution);
+		TargetCellIndexArray[5] = gridIndex3Dto1D(x_int + 1, y_int, z_int + z_offset, gridResolution);
+		TargetCellIndexArray[6] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int + z_offset, gridResolution);
+		TargetCellIndexArray[7] = gridIndex3Dto1D(x_int + 1, y_int + y_offset, z_int + z_offset, gridResolution);
+	}*/
+	//---------------------------------------------------------------------
+	//---------------------------------------------------------------------
+	
 
 	// Loop through cell
 	glm::vec3 VelocityChange(0.f);
@@ -515,6 +555,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int rule3_N = 0;
 
 	for (int i = 0; i < TargetCellCount; i++) {
+	//for (int i = 0; i < 8; i++) {
 
 		int TargetCellIndex = TargetCellIndexArray[i];
 		// - For each cell, read the start/end indices in the boid pointer array.
@@ -535,26 +576,30 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 			// - Access each boid in the cell and compute velocity change from
 			//   the boids rules, if this boid is within the neighborhood distance.
 
+			glm::vec3 founded_particlePosition = pos[particleIndex];
+
 			// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-			if (index != particleIndex && glm::distance(particlePosition, pos[particleIndex]) < rule1Distance) {
-				perceived_center += pos[particleIndex];
+			if (index != particleIndex && glm::distance(particlePosition, founded_particlePosition) < rule1Distance) {
+				perceived_center += founded_particlePosition;
 				rule1_N++;
 			}
 			// Rule 2: boids try to stay a distance d away from each other
-			if (index != particleIndex && glm::distance(particlePosition, pos[particleIndex]) < rule2Distance) {
-				c -= (pos[particleIndex] - particlePosition);
+			if (index != particleIndex && glm::distance(particlePosition, founded_particlePosition) < rule2Distance) {
+				c -= (founded_particlePosition - particlePosition);
 			}
 			// Rule 3: boids try to match the speed of surrounding boids
-			if (index != particleIndex && glm::distance(particlePosition, pos[particleIndex]) < rule3Distance) {
+			if (index != particleIndex && glm::distance(particlePosition, founded_particlePosition) < rule3Distance) {
 				perceived_velocity += vel1[particleIndex];
 				rule3_N++;
 			}
 		}
 	}
 
+
+	// Finally, calculate speed
 	if (rule1_N != 0) {
 		perceived_center /= (float)rule1_N;
-		VelocityChange += (perceived_center - pos[index]) * rule1Scale;
+		VelocityChange += (perceived_center - particlePosition) * rule1Scale;
 	}
 
 	VelocityChange += c * rule2Scale;
@@ -611,6 +656,10 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	int rule1_N = 0;
 	int rule3_N = 0;
 
+  //---------------------------------------------------------------------
+  // ---------------- loop through grid idea ----------------------------
+  //---------------------------------------------------------------------
+
   // - Identify which cells may contain neighbors. This isn't always 8.
   // order is like this
   // for(z)
@@ -631,7 +680,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 			//   DIFFERENCE: For best results, consider what order the cells should be
 			//   checked in to maximize the memory benefits of reordering the boids data.
 
-			// actually, here, we want to get a CELL ROW
+			// actually, here, we want to get a CELL ROW (two consecutive cells)
 			// from startIndex to endIndex, and we directly use it to access pos, vel1 and vel2,
 			// since they are contiguous in memory
 			int girdIndex = gridIndex3Dto1D(x_int, j, i, gridResolution);
@@ -673,20 +722,22 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 				//   the boids rules, if this boid is within the neighborhood distance.
 
 				// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-				// !!-we directly use startIndx - endIndex here-!!
+				// !!-we directly use startIndx -> endIndex here-!!
 				// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+				glm::vec3 founded_particlePosition = pos[k];
+
 				// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-				if (index != k && glm::distance(particlePosition, pos[k]) < rule1Distance) {
-					perceived_center += pos[k];
+				if (index != k && glm::distance(particlePosition, founded_particlePosition) < rule1Distance) {
+					perceived_center += founded_particlePosition;
 					rule1_N++;
 				}
 				// Rule 2: boids try to stay a distance d away from each other
-				if (index != k && glm::distance(particlePosition, pos[k]) < rule2Distance) {
-					c -= (pos[k] - particlePosition);
+				if (index != k && glm::distance(particlePosition, founded_particlePosition) < rule2Distance) {
+					c -= (founded_particlePosition - particlePosition);
 				}
 				// Rule 3: boids try to match the speed of surrounding boids
-				if (index != k && glm::distance(particlePosition, pos[k]) < rule3Distance) {
+				if (index != k && glm::distance(particlePosition, founded_particlePosition) < rule3Distance) {
 					perceived_velocity += vel1[k];
 					rule3_N++;
 				}
@@ -694,10 +745,94 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 		}
 	}
 
-	// Velocity computation 
+  //---------------------------------------------------------------------
+  //---------------------------------------------------------------------
+
+
+  //---------------------------------------------------------------------
+  //------------ previous scatter uniform grid idea ---------------------
+  //---------------------------------------------------------------------
+  // - Suppose neighboring cells must be 8
+
+	//int x_offset = ((x - (float)x_int) > 0.5f) ? 1 : -1;
+	//int y_offset = ((y - (float)y_int) > 0.5f) ? 1 : -1;
+	//int z_offset = ((z - (float)z_int) > 0.5f) ? 1 : -1;
+
+	//int TargetCellIndexArray[8];
+	//if (x_offset == -1) {
+	//	TargetCellIndexArray[0] = gridIndex3Dto1D(x_int - 1, y_int, z_int, gridResolution);
+	//	TargetCellIndexArray[1] = gridIndex3Dto1D(x_int, y_int, z_int, gridResolution);
+	//	TargetCellIndexArray[2] = gridIndex3Dto1D(x_int - 1, y_int + y_offset, z_int, gridResolution);
+	//	TargetCellIndexArray[3] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int, gridResolution);
+	//	TargetCellIndexArray[4] = gridIndex3Dto1D(x_int - 1, y_int, z_int + z_offset, gridResolution);
+	//	TargetCellIndexArray[5] = gridIndex3Dto1D(x_int, y_int, z_int + z_offset, gridResolution);
+	//	TargetCellIndexArray[6] = gridIndex3Dto1D(x_int - 1, y_int + y_offset, z_int + z_offset, gridResolution);
+	//	TargetCellIndexArray[7] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int + z_offset, gridResolution);
+	//}
+
+	//if (x_offset == 1) {
+	//	TargetCellIndexArray[0] = gridIndex3Dto1D(x_int, y_int, z_int, gridResolution);
+	//	TargetCellIndexArray[1] = gridIndex3Dto1D(x_int + 1, y_int, z_int, gridResolution);
+	//	TargetCellIndexArray[2] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int, gridResolution);
+	//	TargetCellIndexArray[3] = gridIndex3Dto1D(x_int + 1, y_int + y_offset, z_int, gridResolution);
+	//	TargetCellIndexArray[4] = gridIndex3Dto1D(x_int, y_int, z_int + z_offset, gridResolution);
+	//	TargetCellIndexArray[5] = gridIndex3Dto1D(x_int + 1, y_int, z_int + z_offset, gridResolution);
+	//	TargetCellIndexArray[6] = gridIndex3Dto1D(x_int, y_int + y_offset, z_int + z_offset, gridResolution);
+	//	TargetCellIndexArray[7] = gridIndex3Dto1D(x_int + 1, y_int + y_offset, z_int + z_offset, gridResolution);
+	//}
+	//for (int i = 0; i < 4; i++) {
+
+	//	int TargetCellIndex_left = TargetCellIndexArray[2*i];
+	//	int TargetCellIndex_right = TargetCellIndexArray[2*i + 1];
+
+	//	// - For each cell, read the start/end indices in the boid pointer array.
+	//	int startIndex = gridCellStartIndices[TargetCellIndex_left];
+	//	int endIndex = gridCellEndIndices[TargetCellIndex_right];
+
+	//	if (startIndex == -1) {
+	//		startIndex = gridCellStartIndices[TargetCellIndex_right];
+	//	}
+	//	if (endIndex == -1) {
+	//		endIndex = gridCellEndIndices[TargetCellIndex_left];
+	//	}
+
+	//	// no enclosing particles in this cell at all
+	//	// skip this cell
+	//	if (startIndex == -1 || endIndex == -1) {
+	//		continue;
+	//	}
+
+	//	// Loop through particles
+	//	for (int j = startIndex; j <= endIndex; j++) {
+
+	//		// - Access each boid in the cell and compute velocity change from
+	//		//   the boids rules, if this boid is within the neighborhood distance.
+
+	//		glm::vec3 founded_particlePosition = pos[j];
+
+	//		// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+	//		if (index != j && glm::distance(particlePosition, founded_particlePosition) < rule1Distance) {
+	//			perceived_center += founded_particlePosition;
+	//			rule1_N++;
+	//		}
+	//		// Rule 2: boids try to stay a distance d away from each other
+	//		if (index != j && glm::distance(particlePosition, founded_particlePosition) < rule2Distance) {
+	//			c -= (founded_particlePosition - particlePosition);
+	//		}
+	//		// Rule 3: boids try to match the speed of surrounding boids
+	//		if (index != j && glm::distance(particlePosition, founded_particlePosition) < rule3Distance) {
+	//			perceived_velocity += vel1[j];
+	//			rule3_N++;
+	//		}
+	//	}
+	//}
+  //---------------------------------------------------------------------
+  //---------------------------------------------------------------------
+
+	// Final velocity computation 
 	if (rule1_N != 0) {
 		perceived_center /= (float)rule1_N;
-		VelocityChange += (perceived_center - pos[index]) * rule1Scale;
+		VelocityChange += (perceived_center - particlePosition) * rule1Scale;
 	}
 
 	VelocityChange += c * rule2Scale;
