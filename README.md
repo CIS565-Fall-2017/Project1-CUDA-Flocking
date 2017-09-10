@@ -8,6 +8,11 @@ Include screenshots, analysis, etc. (Remember, this is public, so don't put
 anything here that you don't want to share with the world.)
 
 
+The machines in Moore 100C seemed to lack a method of video screen capture. Below are screenshots of a simulation of about 7500 boids progressing. 
+
+Boid Count: 7500
+Implementation: Uniform Grid
+
 ![Boids begin movement in small flocks](images/scattered1.PNG)
 ![Flocks coalesce into larger groups](images/scattered4.PNG)
 ![Major flock group begins to dominate simulation](images/scattered5.PNG)
