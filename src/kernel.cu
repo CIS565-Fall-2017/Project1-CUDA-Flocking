@@ -289,7 +289,7 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 		v1 = (v1 / float(num1) - pos[iSelf])* rule1Scale;
 	v2 = v2 * rule2Scale;
 	if(num2)
-		v3 = (v3 / float(num2) - vel[iSelf])* rule3Scale;
+		v3 = (v3 / float(num2))* rule3Scale;
 
   return v1 + v2 + v3;
 }
@@ -511,7 +511,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 		v1 = (v1 / float(num1) - pos[boid_Index]) * rule1Scale;
 	v2 = v2 * rule2Scale;
 	if (num2)
-		v3 = (v3 / float(num2) - vel1[boid_Index])* rule3Scale;
+		v3 = (v3 / float(num2))* rule3Scale;
 	glm::vec3 v_change = v1 + v2 + v3;
 	
 	vel2[boid_Index] = vel1[boid_Index] + v_change;// + v2 + v3;
@@ -643,7 +643,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 		v1 = (v1 / float(num1) - pos[index]) * rule1Scale;
 	v2 = v2 * rule2Scale;
 	if (num2)
-		v3 = (v3 / float(num2) - vel1[index])* rule3Scale;
+		v3 = (v3 / float(num2))* rule3Scale;
 	glm::vec3 v_change = v1 + v2 + v3;
 
 	vel2[index] = vel1[index] + v_change;// + v2 + v3;
