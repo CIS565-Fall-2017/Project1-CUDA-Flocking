@@ -30,8 +30,6 @@ ___
 
 The performance of ***Naive Boids***, ***Uniform Boids*** and ***Coherent Uniform Boids*** is measured using FPS along with the time.
 
-![](./results_images/5000boids_comparison.JPG)
-
 ![](./results_images/25000boids_comparison.JPG)
 
 ![](./results_images/50000boids_comparison.JPG)
