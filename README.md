@@ -68,6 +68,18 @@ Here, we see that the rendering of boids acts as a bottleneck when running the s
 
 #### Coherent grid
 
-Below is a graph showing how FPS changes the uniform and coherent grid approaches as the number of boids increases. 
+Below is a graph showing how FPS changes for the uniform and coherent grid approaches as the number of boids increases. This is the same graph as in the "Number of boids" section, but with the data from the naive algorithm removed.
+
+![](images/graphUniformVsCoherent.png)
+
+Here, we can see in more detail that the coherent grid is actually outperformed by the simpler uniform grid for N <= 5000. This is probably due to the increased overhead of the coherent grid method, which requires the re-shuffling of the boid data, out-weighing the benefits of the more coherent memory access. After all, for smaller N, there is a larger chance that a group of boids examined by the uniform grid method happen to be close to each other in memory even without the re-shuffle.
+
+For N >= 7500, the coherent grid method starts to clearly outperform the uniform grid method. This suggests the overhead of re-shuffling the boid data quickly becomes negligible when compared to the delays caused by the scattered memory access in the uniform grid method, which becomes more and more likely as N increases. We can see that the difference is so drastic that it can even be seen when visualization is enabled. Although the rendering process continues to be a bottleneck is either case, the difference in the performance of the actual simulation is enough to cause a noticeable gap between the framerates with visualization enabled.
+
+This is the outcome I expected. Prior to running the measurements, I theorized that the additional overhead of the coherent grid would hurt it for relaitvely small N, but the coherent grid would scale much better for larger N. My reasons for believing so are the same ones I used above to explain the recorded behavior of each algorithm.
+
+#### Cell width
+
+Below is a graph showing how FPS changes for the grid-based approaches as the number of boids increases. This is graph shows two versions of each algorithm: one where the grid cells have a width of one neighborhood distance (so at most 27 cells are checked per boid), while the other has grid cells with double that width (at most 8 cells are checked per boid). The measurements were taken with visualization disabled.
 
 ![](images/graphUniformVsCoherent.png)
