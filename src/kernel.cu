@@ -6,6 +6,9 @@
 #include "utilityCore.hpp"
 #include "kernel.h"
 
+// 27 or 8 cells checking
+#define more_cell_checking 0
+
 // LOOK-2.1 potentially useful for doing grid-based neighbor search
 #ifndef imax
 #define imax( a, b ) ( ((a) > (b)) ? (a) : (b) )
@@ -159,7 +162,12 @@ void Boids::initSimulation(int N) {
   checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
 
   // LOOK-2.1 computing grid params
-  gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+  //#if more_cell_checking
+  gridCellWidth = 1.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+  //#else
+  //gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+  //#endif
+  
   int halfSideCount = (int)(scene_scale / gridCellWidth) + 1;
   gridSideCount = 2 * halfSideCount;
 
@@ -425,9 +433,41 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
 	int num1 = 0;
 	int num2 = 0;
-	for(int i = flagx; i <= flagx + 1; i++)
-		for(int j = flagy; j <= flagy + 1; j++)
-			for (int k = flagz; k <= flagz + 1; k++) {
+	//for(int i = flagx; i <= flagx + 1; i++)
+	//	for(int j = flagy; j <= flagy + 1; j++)
+	//		for (int k = flagz; k <= flagz + 1; k++) {
+	//			int g_idx;
+	//			g_idx = grid_Index + i + j * gridResolution + k * gridResolution * gridResolution;
+	//			int startIndex = gridCellStartIndices[g_idx];
+	//			int endIndex = gridCellEndIndices[g_idx];
+	//			if (startIndex == -1 && endIndex == -1 && g_idx >= 0 && g_idx < GridCellNum)
+	//				continue;
+	//			for (int m = startIndex; m <= endIndex; m++) {
+	//				int idx = particleArrayIndices[m];
+	//				if (idx != boid_Index) {
+	//					float distance = glm::length(pos[idx] - pos[boid_Index]);
+	//					// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+	//					if (distance < rule1Distance) {
+	//						v1 += pos[idx];
+	//						num1++;
+	//					}
+	//					// Rule 2: boids try to stay a distance d away from each other
+	//					if (distance < rule2Distance)
+	//						v2 -= (pos[idx] - pos[boid_Index]);
+	//					// Rule 3: boids try to match the speed of surrounding boids
+	//					if (distance < rule3Distance) {
+	//						v3 += vel1[idx];
+	//						num2++;
+	//					}
+	//				}
+	//			}
+	//		}
+
+	//27cells:
+
+	for (int i = -1; i <= 1; i++)
+		for (int j = -1; j <= 1; j++)
+			for (int k = -1; k <= 1; k++) {
 				int g_idx;
 				g_idx = grid_Index + i + j * gridResolution + k * gridResolution * gridResolution;
 				int startIndex = gridCellStartIndices[g_idx];
@@ -541,6 +581,38 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 					}
 				}
 			}
+
+	//27cells
+
+	//for (int i = -1; i <= 1; i++)
+	//	for (int j = -1; j <= 1; j++)
+	//		for (int k = -1; k <= 1; k++) {
+	//			int g_idx;
+	//			g_idx = grid_Index + i + j * gridResolution + k * gridResolution * gridResolution;
+	//			int startIndex = gridCellStartIndices[g_idx];
+	//			int endIndex = gridCellEndIndices[g_idx];
+	//			if (startIndex == -1 && endIndex == -1 && g_idx >= 0 && g_idx < GridCellNum)
+	//				continue;
+	//			for (int m = startIndex; m <= endIndex; m++) {
+	//				if (m != index) {
+	//					float distance = glm::length(pos[m] - thispos);
+	//					// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+	//					if (distance < rule1Distance) {
+	//						v1 += pos[m];
+	//						num1++;
+	//					}
+	//					// Rule 2: boids try to stay a distance d away from each other
+	//					if (distance < rule2Distance)
+	//						v2 -= (pos[m] - thispos);
+	//					// Rule 3: boids try to match the speed of surrounding boids
+	//					if (distance < rule3Distance) {
+	//						v3 += vel1[m];
+	//						num2++;
+	//					}
+	//				}
+	//			}
+	//		}
+
 	if (num1)
 		v1 = (v1 / float(num1) - pos[index]) * rule1Scale;
 	v2 = v2 * rule2Scale;
