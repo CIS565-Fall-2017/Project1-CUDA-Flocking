@@ -1,10 +1,28 @@
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture,
 Project 1 - Flocking**
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+* Yash Vardhan
+* Tested on: Windows 10 Pro, Intel i5-4200U (4) @ 2.600GHz 4GB, NVIDIA GeForce 840M 2048MB
 
-### (TODO: Your README)
+Boids Flocking using coherent uniform grid
+===========================================
 
-Include screenshots, analysis, etc. (Remember, this is public, so don't put
-anything here that you don't want to share with the world.)
+![](images/boids.gif)
+
+Performance Analysis
+====================
+
+FPS vs Number of Boids(Visualized)
+----------------------------------
+
+![](images/visualboid.jpg)
+
+FPS vs Number of Boids(Non-Visualized)
+--------------------------------------
+
+![](images/nonvisualboid.jpg)
+
+FPS vs Block Size 
+------------------
+
+![](images/blocksize.jpg)
