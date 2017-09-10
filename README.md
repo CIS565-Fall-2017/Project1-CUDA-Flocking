@@ -6,19 +6,12 @@ Project 1 - Flocking**
 * Mauricio Mutai
 * Tested on: Windows 10, i7-7700HQ @ 2.80GHz 16GB, GTX 1050Ti 4GB (Personal Computer)
 
-**Part 4:** Image showing title bar modified to have my name
+### Overview
 
-![](images/part4.PNG)
+#### Screenshot of boids simulation in progress
 
-**Part 5:** Image of *Timeline* from Nsight Performance Analysis
+![](images/boids-still.png)
 
-![](images/part5.PNG)
+#### Animation of boids simulation in progress
 
-**Part 6:** Image of *Autos* and *CUDA Info -> Warp* from CUDA Debugging
-
-![](images/part6.PNG)
-
-### (TODO: Your README)
-
-Include screenshots, analysis, etc. (Remember, this is public, so don't put
-anything here that you don't want to share with the world.)
+![](images/boids-anim.gif)
