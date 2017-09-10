@@ -352,8 +352,7 @@ __device__ int getGridCellQuadrant(float gridCellPos, float halfCellWidth) {
 
 
 // Added 9/9/17
-__device__ void checkGridCellAndUpdateVel(int x, int y, int z, int N, int gridResolution, glm::vec3 gridMin,
-	float inverseCellWidth, float cellWidth,
+__device__ void checkGridCellAndUpdateVel(int x, int y, int z, int gridResolution,
 	int *gridCellStartIndices, int *gridCellEndIndices,
 	int *particleArrayIndices,
 	glm::vec3 *pos, glm::vec3 *vel1, glm::vec3 *vel2, int iSelf) {
@@ -364,7 +363,9 @@ __device__ void checkGridCellAndUpdateVel(int x, int y, int z, int N, int gridRe
 		int gridIndex = gridIndex3Dto1D(x, y, z, gridResolution);
 		int start = gridCellStartIndices[gridIndex];
 		int end = gridCellEndIndices[gridIndex];
-
+		if (start == -1 || end == -1) {
+			return;
+		}
 
 		glm::vec3 boidPos = pos[iSelf];
 		// Kind of repeated code
@@ -400,17 +401,10 @@ __device__ void checkGridCellAndUpdateVel(int x, int y, int z, int N, int gridRe
 		if (rule3Counter != 0) {
 			percVel /= rule3Counter;
 		}
-
-		// return perceivedCenter*rule1Scale;
-		// return c * rule2Scale;
-		// return percVel * rule3Scale;
-		return perceivedCenter*rule1Scale + c * rule2Scale + percVel * rule3Scale;
+		vel2[iSelf] += perceivedCenter*rule1Scale + c * rule2Scale + percVel * rule3Scale;
 	}
-	vel2[iSelf] = vel1[iSelf] + computeVelocityChange(N, index, pos, vel1);
 
-	if (glm::length(vel2[iSelf]) > maxSpeed) {
-		vel2[iSelf] = glm::normalize(vel2[index]) * maxSpeed;
-	}
+
 }
 
 __global__ void kernComputeIndices(int N, int gridResolution,
@@ -433,11 +427,6 @@ __global__ void kernComputeIndices(int N, int gridResolution,
 	gridIndices[index] = gridIndex3Dto1D(x, y, z, gridResolution);
 	//gridIndices[index] = getGridCellFromPosition(pos[index], gridMin, inverseCellWidth, gridResolution);
 	indices[index] = index;
-
-	// gridIndices : values are actual grid indices
-	// indices: boid
-	// gridResolution size of grid
-
 
 }
 
@@ -471,8 +460,6 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 		gridCellEndIndices[gridIdx] = index;
 	}
 }
-
-
 
 __global__ void kernUpdateVelNeighborSearchScattered(
   int N, int gridResolution, glm::vec3 gridMin,
@@ -512,13 +499,29 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int gridCell = gridIndex3Dto1D(x, y, z, gridResolution);
 
 	// calculate grid positions of up to eight neighbors
-	// use compute velocity change
 
+	// qX, qY, qZ are -1 or 1 depending on what quadrant of the cell the boid is in 
 	int qX = getGridCellQuadrant(floatX - x, cellWidth / 2.0);
 	int qY = getGridCellQuadrant(floatY - y, cellWidth / 2.0);
 	int qZ = getGridCellQuadrant(floatZ - z, cellWidth / 2.0);
+	
+	// Set vel2.
+	vel2[index] = vel1[index];
 
-	// TODO: check grids at x + qX, y + qY z + qZ
+	// check grid cells at x + qX, y + qY z + qZ
+	// add to Vel2
+	checkGridCellAndUpdateVel(x, y, z, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+	checkGridCellAndUpdateVel(x, y, z + qZ, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+	checkGridCellAndUpdateVel(x, y + qY, z, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+	checkGridCellAndUpdateVel(x, y + qY, z + qZ, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+	checkGridCellAndUpdateVel(x + qX, y, z, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+	checkGridCellAndUpdateVel(x + qX, y, z + qZ, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+	checkGridCellAndUpdateVel(x + qX, y + qY, z, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+	checkGridCellAndUpdateVel(x + qX, y + qY, z + qZ, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, partIdx);
+
+	if (glm::length(vel2[index]) > maxSpeed) {
+		vel2[index] = glm::normalize(vel2[index]) * maxSpeed;
+	}
 	
 	
 }
@@ -601,6 +604,11 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	kernResetIntBuffer << <cellBlocksPerGrid, blockSize >> > (gridCellCount, dev_gridCellStartIndices, -1);
 	kernResetIntBuffer << <cellBlocksPerGrid, blockSize >> > (gridCellCount, dev_gridCellEndIndices, -1);
 
+	/*for (int i = 0; i < gridCellCount; i++) {
+		dev_gridCellStartIndices[i] = -1;
+		dev_gridCellEndIndices[i] = -1;
+	}*/
+
 	// Find start and end indices
 	kernIdentifyCellStartEnd << <fullBlocksPerGrid, blockSize >> >  
 		(numObjects, dev_particleArrayIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
@@ -610,6 +618,12 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 		(numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, gridCellWidth,
 			dev_gridCellStartIndices, dev_gridCellEndIndices, 
 			dev_particleArrayIndices, dev_pos, dev_vel1, dev_vel2);
+
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> >(numObjects, dt, dev_pos, dev_vel2);
+
+	glm::vec3 *temp = dev_vel1;
+	dev_vel1 = dev_vel2;
+	dev_vel2 = temp;
 
 }
 
