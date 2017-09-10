@@ -256,23 +256,24 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
   {
     glm::vec3 currentPos = pos[i];
     glm::vec3 currentDisplacement = currentPos - selfPos;
+    float displacementMagn = glm::length(currentDisplacement);
 
     // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-    if (glm::length(currentDisplacement) < rule1Distance)
+    if (displacementMagn < rule1Distance)
     {
       perceivedCenter += currentPos;
       r1_neighbors++;
     }
 
     // Rule 2: boids try to stay a distance d away from each other
-    if (glm::length(currentDisplacement) < rule2Distance)
+    if (displacementMagn < rule2Distance)
     {
       avoidanceVelocity -= currentDisplacement;
       r2_neighbors++;
     }
 
     // Rule 3: boids try to match the speed of surrounding boids
-    if (glm::length(currentDisplacement) < rule3Distance)
+    if (displacementMagn < rule3Distance)
     {
       perceivedVelocity += vel[i];
       r3_neighbors++;
@@ -284,9 +285,9 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
     perceivedCenter /= r1_neighbors;
   }
 
-  if (r2_neighbors > 0)
+  if (r3_neighbors > 0)
   {
-    perceivedVelocity /= r2_neighbors;
+    perceivedVelocity /= r3_neighbors;
   }
 
   if (r1_neighbors + r2_neighbors + r3_neighbors > 0)
@@ -394,19 +395,22 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
   // This is basically a parallel unrolling of a loop that goes
   // "this index doesn't match the one before it, must be a new cell!"
   int index = threadIdx.x + (blockIdx.x * blockDim.x);
+  int gridIdx = particleGridIndices[index];
+  int gridIdxNext = particleGridIndices[index + 1];
   if (index == N - 1)
   {
-    gridCellEndIndices[particleGridIndices[index]] = index;
+    gridCellEndIndices[gridIdx] = index;
+    return;
   }
 
   if (index > N - 1) {
     return;
   }
 
-  if (particleGridIndices[index] != particleGridIndices[index + 1])
+  if (gridIdx != gridIdxNext)
   {
-    gridCellEndIndices[particleGridIndices[index]] = index;
-    gridCellStartIndices[particleGridIndices[index + 1]] = index + 1;
+    gridCellEndIndices[gridIdx] = index;
+    gridCellStartIndices[gridIdxNext] = index + 1;
   }
 }
 
@@ -430,10 +434,12 @@ __global__ void kernUpdateVelNeighborSearchScattered(
     return;
   }
   
-  glm::vec3 boidPos = pos[particleArrayIndices[index]];
-  glm::vec3 index3D = floor((boidPos - gridMin) * inverseCellWidth);
+  int actualBoidIndex = particleArrayIndices[index];
+  glm::vec3 boidPos = pos[actualBoidIndex];
+  glm::vec3 boidPosLocalToGrid = boidPos - gridMin;
+  glm::vec3 index3D = floor(boidPosLocalToGrid * inverseCellWidth);
   glm::vec3 gridCellCenter = (index3D + glm::vec3(0.5f)) * cellWidth;
-  glm::vec3 gridOctant = glm::sign(boidPos - gridCellCenter);
+  glm::vec3 gridOctant = glm::sign(boidPosLocalToGrid - gridCellCenter);
 
   glm::vec3 perceivedCenter(0);
   glm::vec3 avoidanceVelocity(0);
@@ -449,13 +455,13 @@ __global__ void kernUpdateVelNeighborSearchScattered(
     {
       for (int z = 0; z <= 1; ++z)
       {
-        glm::vec3 currentGridIndex = glm::vec3(x * gridOctant.x, y * gridOctant.y, z * gridOctant.z) + index3D;
+        glm::vec3 currentGridIndex = glm::vec3(((float) x) * gridOctant.x, ((float) y) * gridOctant.y, ((float) z) * gridOctant.z) + index3D;
 
-        if (((((int) currentGridIndex.x) > 0 && ((int) currentGridIndex.x) < gridResolution) &&
-             (((int) currentGridIndex.y) > 0 && ((int) currentGridIndex.y) < gridResolution)) &&
-             (((int) currentGridIndex.z) > 0 && ((int) currentGridIndex.z) < gridResolution))
+        if (((((int) currentGridIndex.x) >= 0 && ((int) currentGridIndex.x) < gridResolution) &&
+             (((int) currentGridIndex.y) >= 0 && ((int) currentGridIndex.y) < gridResolution)) &&
+             (((int) currentGridIndex.z) >= 0 && ((int) currentGridIndex.z) < gridResolution))
         {
-          int index1D = gridIndex3Dto1D(x, y, z, gridResolution);
+          int index1D = gridIndex3Dto1D(currentGridIndex.x, currentGridIndex.y, currentGridIndex.z, gridResolution);
           for (int g = gridCellStartIndices[index1D]; g <= gridCellEndIndices[index1D]; ++g)
           {
             if (g < 0) break;
@@ -463,7 +469,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
             glm::vec3 currentBoidPos = pos[currentBoid];
 
             // Boid
-            if (currentBoid != particleArrayIndices[index])
+            if (currentBoid != actualBoidIndex)
             {
               glm::vec3 currentDisplacement = currentBoidPos - boidPos;
               float displacementMagn = glm::length(currentDisplacement);
@@ -500,21 +506,20 @@ __global__ void kernUpdateVelNeighborSearchScattered(
     perceivedCenter /= r1_neighbors;
   }
 
-  if (r2_neighbors > 0)
+  if (r3_neighbors > 0)
   {
-    perceivedVelocity /= r2_neighbors;
+    perceivedVelocity /= r3_neighbors;
   }
 
   if (r1_neighbors + r2_neighbors + r3_neighbors > 0)
   {
-    vel2[particleArrayIndices[index]] =
-                               (perceivedCenter - boidPos) * rule1Scale +
-                                         avoidanceVelocity * rule2Scale +
-                                         perceivedVelocity * rule3Scale;
+    vel2[actualBoidIndex] = (perceivedCenter - boidPos) * rule1Scale +
+                                      avoidanceVelocity * rule2Scale +
+                                      perceivedVelocity * rule3Scale;
   }
   else
   {
-    vel2[particleArrayIndices[index]] = avoidanceVelocity * rule2Scale;
+    vel2[actualBoidIndex] = avoidanceVelocity * rule2Scale;
   }
 }
 
