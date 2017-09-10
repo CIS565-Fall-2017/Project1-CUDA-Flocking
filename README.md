@@ -53,7 +53,5 @@ With fewer boids, the difference between the Uniform and Coherent Grids seems pr
 ### Neighbor Checking
 Increasing the neighbor check from 8 to 27 neighboring cells caused a decrease in performance. In the chart below, we can see that the FPS decreases as more boids are added. Not only that, but the simulation crashed sooner for both Uniform and Coherent Grid Searches.
 
-![](images/neighbors.png)
-
-
+![](images/neighbors.PNG)
 
