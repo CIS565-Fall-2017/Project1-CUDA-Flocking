@@ -7,7 +7,8 @@ Project 1 - Flocking**
 ### README
 #### Results
 ![Naive Simulation 5000Particles 27 NeighborSearch](/images/Naive5000neighbor27.gif)
-                             Naive Simulation 5000Particles 27 NeighborSearch
+<p align="center"><b>Naive Simulation 5000Particles 27 NeighborSearch</b></p>
+                             
 
 ![UniformSimulation 5000Particles 27 NeighborSearch](/images/Uniform5000neighbor27.gif)
                              UniformSimulation 5000Particles 27 NeighborSearch
