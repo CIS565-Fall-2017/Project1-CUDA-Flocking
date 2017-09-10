@@ -159,7 +159,15 @@ void Boids::initSimulation(int N) {
   checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
 
   // LOOK-2.1 computing grid params
-  gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+
+  //GridCellWidth is 2 times the neighborhood distance
+  //This means that need to search through surrounding 8 neighboring grid cells
+  //gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+
+  //Changing gridCellWidth to be neighborhood distance
+  //Note: would need to search through surrounding 27 neighboring grid cells
+  gridCellWidth = std::max(std::max(rule1Distance, rule2Distance), rule3Distance);		
+  
   int halfSideCount = (int)(scene_scale / gridCellWidth) + 1;
   gridSideCount = 2 * halfSideCount;
 
@@ -507,9 +515,9 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int neighborCount2 = 0;
 
 	//Loop through to get the indices of all the particles within the neighborhood of the current particle at index
-	for (int i = -1; i < 1; i++) {
-		for (int j = -1; j < 1; j++) {
-			for (int k = -1; k < 1; k++) {
+	for (int i = -1; i < 2; i++) {
+		for (int j = -1; j < 2; j++) {
+			for (int k = -1; k < 2; k++) {
 
 				//[QUESTION] Do I need to clamp from 0 to (gridResolution - 1)?
 				int particleGridIdx = gridIndex3Dto1D(particleGridPos.x + i, particleGridPos.y + j, particleGridPos.z + k, gridResolution);
@@ -616,9 +624,9 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	int neighborCount1 = 0;
 	int neighborCount2 = 0;
 
-	for (int i = -1; i < 1; i++) {
-		for (int j = -1; j < 1; j++) {
-			for (int k = -1; k < 1; k++) {
+	for (int i = -1; i < 2; i++) {
+		for (int j = -1; j < 2; j++) {
+			for (int k = -1; k < 2; k++) {
 
 				//[QUESTION] Do I need to clamp from 0 to (gridResolution - 1)?
 				int particleGridIdx = gridIndex3Dto1D(particleGridPos.x + i, particleGridPos.y + j, particleGridPos.z + k, gridResolution);
@@ -747,7 +755,7 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 																	gridSideCount, gridMinimum, gridInverseCellWidth, 
 																	dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
 
-	cudaThreadSynchronize();
+	//cudaThreadSynchronize();
 
 	//Sort particleArrayIndices by gridIndices
 	thrust::device_ptr<int> dev_thrust_keys(dev_particleGridIndices);
@@ -791,9 +799,6 @@ void Boids::stepSimulationCoherentGrid(float dt) {
   // - Update positions
   // - Ping-pong buffers as needed. THIS MAY BE DIFFERENT FROM BEFORE.
 
-
-	dim3 fullBlocksPerGridParticle((numObjects + blockSize - 1) / blockSize);
-
 	dim3 fullBlocksPerGrid((gridCellCount + blockSize - 1) / blockSize);
 
 	kernResetIntBuffer<<<fullBlocksPerGrid, blockSize>>>(gridCellCount, dev_gridCellStartIndices, -1);
@@ -802,12 +807,15 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	kernResetIntBuffer<<<fullBlocksPerGrid, blockSize>>>(gridCellCount, dev_gridCellEndIndices, -1);
 	checkCUDAErrorWithLine("kernResetIntBuffer for gridCellEndIndices failed!");
 
+
+	dim3 fullBlocksPerGridParticle((numObjects + blockSize - 1) / blockSize);
+
 	//Calculate the particleArrayIndices and particleGridIndices
 	kernComputeIndices<<<fullBlocksPerGridParticle, blockSize>>>(numObjects, 
 																	gridSideCount, gridMinimum, gridInverseCellWidth,
 																	dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
 	
-	cudaThreadSynchronize();
+	//cudaThreadSynchronize();
 	
 	//Sort particleArrayIndices by gridIndices
 	thrust::device_ptr<int> dev_thrust_keys(dev_particleGridIndices);
@@ -831,8 +839,8 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	kernUpdatePos<<<fullBlocksPerGridParticle, blockSize>>>(numObjects, dt, coherent_pos, dev_vel2);
 	checkCUDAErrorWithLine("kernUpdatePos failed!");
 
-	std::swap(coherent_pos, dev_pos);
-	std::swap(coherent_vel, dev_vel2);
+	std::swap(dev_pos, coherent_pos);
+	std::swap(dev_vel1, dev_vel2);
 
 }
 
