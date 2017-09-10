@@ -16,9 +16,11 @@ In main.cpp, line 238 to line 239 and line 279 to line 282. Count fps for a rang
 
 * Running time count.
 
-In main.cpp, line 204 to line 207 and line 223 to line 230. Use Cuda event to get time for a range of time and print averaged running time.
+In main.cpp, line 204 to line 207 and line 223 to line 230. Use Cuda event to get time for a frame, collect total running time for range of time and print averaged running time.
 
 # Chart Showing Without Visualization
+
+* Running time changing with increasing number of boids
 
 ![](images/chart.png)
 
@@ -26,9 +28,13 @@ In main.cpp, line 204 to line 207 and line 223 to line 230. Use Cuda event to ge
 
 Roughly speaking the running time per frame for naive method works with time complexity O(n^2). And the other two is O(n).
 
+* FPS changing with increasing number of boids
+
 ![](images/chart2.png)
 
 It is a little bit weird that the coherent performs bad on 5000 boids. Maybe the extra time cost for forming new vel1 and pos is much more obvious when the boids number is low.
+
+* Running time changing with increasing number of block size
 
 ![](images/chart3.png)
 
