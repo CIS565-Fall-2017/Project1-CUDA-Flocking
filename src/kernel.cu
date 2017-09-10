@@ -178,8 +178,8 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&dev_gridCellEndIndices, gridCellCount * sizeof(int));
   cudaMalloc((void**)&shuffled_pos, N * sizeof(glm::vec3));
 
-  dev_thrust_particleArrayIndices = thrust::device_ptr<int>(dev_particleArrayIndices);
-  dev_thrust_particleGridIndices = thrust::device_ptr<int>(dev_particleGridIndices);
+  //dev_thrust_particleArrayIndices = thrust::device_ptr<int>(dev_particleArrayIndices);
+  //dev_thrust_particleGridIndices = thrust::device_ptr<int>(dev_particleGridIndices);
 
   cudaThreadSynchronize();
 }
@@ -387,7 +387,7 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
   // This is basically a parallel unrolling of a loop that goes
   // "this index doesn't match the one before it, must be a new cell!"
   int ind = threadIdx.x + blockIdx.x * blockDim.x;
-  if (ind >= N) return;
+  if (ind >= N || ind <= 0) return;
 
   if ((particleGridIndices[ind] != particleGridIndices[ind - 1])) {
 	  gridCellStartIndices[particleGridIndices[ind]] = ind;
@@ -416,10 +416,14 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   int ind = threadIdx.x + blockIdx.x * blockDim.x;
   if (ind >= N) return;
 
+  int start_ind;
+  int end_ind;
+  int current_boid = particleArrayIndices[ind];
+
   glm::ivec3 ind3D;
   unsigned char mask;
 
-  glm::vec3 part_ind3D = (pos[ind] - gridMin) * inverseCellWidth;
+  glm::vec3 part_ind3D = (pos[current_boid] - gridMin) * inverseCellWidth;
   ind3D = part_ind3D;
   part_ind3D -= glm::floor(part_ind3D);
   mask = ((part_ind3D.x >= 0.5f) || (part_ind3D.y >= 0.5f) << 1 || (part_ind3D.z >= 0.5f) << 2);
@@ -443,9 +447,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	  }
   }
 
-  int start_ind;
-  int end_ind;
-  int current_boid = particleArrayIndices[ind];
+  
 //
 //  float x = ((pos[current_boid].x - gridMin.x) * inverseCellWidth);
 //  float y = ((pos[current_boid].y - gridMin.y) * inverseCellWidth);
@@ -494,25 +496,25 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	  start_ind = gridCellStartIndices[neighbour_grids[i]];
 	  end_ind = gridCellEndIndices[neighbour_grids[i]];
 
-	  for (int j = start_ind; j <= end_ind; j++) {
+	  for (int j = start_ind; j < end_ind; ++j) {
 		  int neighbour_boid = particleArrayIndices[j];
 		  if (current_boid == neighbour_boid) continue;
 		  float dist = glm::distance(pos[current_boid], pos[neighbour_boid]);
 
 		  if (dist < rule1Distance) {
 			  // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-			  center += pos[j];
+			  center += pos[neighbour_boid];
 			  num_neighbour_cent ++;
 		  }
 
 		  if (dist < rule1Distance) {
 			  // Rule 2: boids try to stay a distance d away from each other
-			  separate += (pos[current_boid] - pos[j]);
+			  separate += (pos[current_boid] - pos[neighbour_boid]);
 		  }
 
 		  if (dist < rule1Distance) {
 			  // Rule 3: boids try to match the speed of surrounding boids
-			  cohesion += vel1[j];
+			  cohesion += vel1[neighbour_boid];
 			  num_neighbour_cohe ++;
 		  }
 	  }
