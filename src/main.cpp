@@ -14,13 +14,14 @@
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
-#define UNIFORM_GRID 0
-#define COHERENT_GRID 0
+#define UNIFORM_GRID 1
+#define COHERENT_GRID 1
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
 const int N_FOR_VIS = 5000;
 const float DT = 0.2f;
-
+//Use this to record the neighbour search time.
+float Neighbour_Search_T = 0.0f;
 /**
 * C main function.
 */
@@ -200,7 +201,7 @@ void initShaders(GLuint * program) {
 
     // execute the kernel
     #if UNIFORM_GRID && COHERENT_GRID
-    Boids::stepSimulationCoherentGrid(DT);
+    Boids::stepSimulationCoherentGrid(DT,&Neighbour_Search_T);
     #elif UNIFORM_GRID
     Boids::stepSimulationScatteredGrid(DT);
     #else
@@ -222,6 +223,8 @@ void initShaders(GLuint * program) {
 
     Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
                        // your CUDA development setup is ready to go.
+	//Use this to record the fps data
+	//FILE* fp = fopen("frameData.txt", "w");
 
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
@@ -233,6 +236,12 @@ void initShaders(GLuint * program) {
         fps = frame / (time - timebase);
         timebase = time;
         frame = 0;
+
+		//Use this to record the fps data
+		//if (time < 180)
+		//	fprintf(fp, "%.2f\n", fps);
+		//else break;
+
       }
 
       runCUDA();
@@ -259,6 +268,8 @@ void initShaders(GLuint * program) {
       glfwSwapBuffers(window);
       #endif
     }
+	//fclose(fp);
+	//std::cout << Neighbour_Search_T << std::endl;
     glfwDestroyWindow(window);
     glfwTerminate();
   }

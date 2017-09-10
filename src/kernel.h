@@ -13,7 +13,7 @@ namespace Boids {
     void initSimulation(int N);
     void stepSimulationNaive(float dt);
     void stepSimulationScatteredGrid(float dt);
-    void stepSimulationCoherentGrid(float dt);
+    void stepSimulationCoherentGrid(float dt,float* Neighbour_Search_T);
     void copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities);
 
     void endSimulation();
