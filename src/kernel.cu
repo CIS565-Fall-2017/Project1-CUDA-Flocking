@@ -84,11 +84,11 @@ thrust::device_ptr<int> dev_thrust_particleGridIndices;
 int *dev_gridCellStartIndices; // What part of dev_particleArrayIndices belongs
 int *dev_gridCellEndIndices;   // to this cell?
 
-							   // TODO-2.3 - consider what additional buffers you might need to reshuffle
-							   // the position and velocity data to be coherent within cells.
+// TODO-2.3 - consider what additional buffers you might need to reshuffle
+// the position and velocity data to be coherent within cells.
 
-							   // LOOK-2.1 - Grid parameters based on simulation parameters.
-							   // These are automatically computed for you in Boids::initSimulation
+// LOOK-2.1 - Grid parameters based on simulation parameters.
+// These are automatically computed for you in Boids::initSimulation
 int gridCellCount;
 int gridSideCount;
 float gridCellWidth;
