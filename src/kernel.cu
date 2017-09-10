@@ -424,18 +424,31 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	
 	int grid_Index = gridIndex3Dto1D((int)x, (int)y, (int)z, gridResolution);
 
-	int flagx = int(x + 0.5f) - int(x) ? 0 : -1;
-	int flagy = int(y + 0.5f) - int(y) ? 0 : -1;
-	int flagz = int(z + 0.5f) - int(z) ? 0 : -1;
+	int posx = int(x + 0.5f) - int(x);
+	if (posx)
+		posx = 0;
+	else
+		posx = -1;
+	int posy = int(y + 0.5f) - int(y);
+	if (posy)
+		posy = 0;
+	else
+		posy = -1;
+	int posz = int(z + 0.5f) - int(z);
+	if (posz)
+		posz = 0;
+	else
+		posz = -1;
+
 	int GridCellNum = gridResolution * gridResolution * gridResolution;
 	
 	glm::vec3 v1(0), v2(0), v3(0);
 
 	int num1 = 0;
 	int num2 = 0;
-	for(int i = flagx; i <= flagx + 1; i++)
-		for(int j = flagy; j <= flagy + 1; j++)
-			for (int k = flagz; k <= flagz + 1; k++) {
+	for (int i = posx; i <= posx + 1; i++)
+		for (int j = posy; j <= posy + 1; j++)
+			for (int k = posz; k <= posz + 1; k++) {
 				int g_idx;
 				g_idx = grid_Index + i + j * gridResolution + k * gridResolution * gridResolution;
 				int startIndex = gridCellStartIndices[g_idx];
@@ -544,18 +557,31 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 
 	int grid_Index = gridIndex3Dto1D((int)x, (int)y, (int)z, gridResolution);
 
-	int flagx = int(x + 0.5f) - int(x) ? 0 : -1;
-	int flagy = int(y + 0.5f) - int(y) ? 0 : -1;
-	int flagz = int(z + 0.5f) - int(z) ? 0 : -1;
+	int posx = int(x + 0.5f) - int(x);
+	if (posx)
+		posx = 0;
+	else
+		posx = -1;
+	int posy = int(y + 0.5f) - int(y);
+	if (posy)
+		posy = 0;
+	else
+		posy = -1;
+	int posz = int(z + 0.5f) - int(z);
+	if (posz)
+		posz = 0;
+	else
+		posz = -1;
+
 	int GridCellNum = gridResolution * gridResolution * gridResolution;
 
 	glm::vec3 v1(0), v2(0), v3(0);
 
 	int num1 = 0;
 	int num2 = 0;
-	for (int i = flagx; i <= flagx + 1; i++)
-		for (int j = flagy; j <= flagy + 1; j++)
-			for (int k = flagz; k <= flagz + 1; k++) {
+	for (int i = posx; i <= posx + 1; i++)
+		for (int j = posy; j <= posy + 1; j++)
+			for (int k = posz; k <= posz + 1; k++) {
 				int g_idx;
 				g_idx = grid_Index + i + j * gridResolution + k * gridResolution * gridResolution;
 				int startIndex = gridCellStartIndices[g_idx];
