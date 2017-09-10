@@ -725,7 +725,7 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 		gridInverseCellWidth, gridCellWidth, 
 		dev_gridCellStartIndices, dev_gridCellEndIndices,
 		dev_shuffledPos, dev_vel2, dev_vel1);
-	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_shuffledPos, dev_vel2);
+	kernUpdatePos << <fullBlocksPerGrid, blockSize >> > (numObjects, dt, dev_shuffledPos, dev_vel1);
   // - Update positions
   // - Ping-pong buffers as needed. THIS MAY BE DIFFERENT FROM BEFORE.
 	//switch dev_pos and dev_shuffledPos
@@ -810,11 +810,10 @@ void Boids::unitTest() {
   delete[] intKeys;
   delete[] intValues;
   //cudaFree(dev_intKeys);
-  cudaFree(dev_intValues);
+  //cudaFree(dev_intValues);
   checkCUDAErrorWithLine("cudaFree failed!");
 
   //test kernShufflePositionVelocity
-  /*
   glm::vec3 *dev_dummyVel1;
   glm::vec3 *dev_dummyPos1;
   glm::vec3 *dev_dummyShuffleVel;
@@ -823,8 +822,8 @@ void Boids::unitTest() {
   glm::vec3 *dummyVel1 = new glm::vec3[N];
   std::cout << "before shuffle" << std::endl;
   for (int i = 0; i < N; i++) {
-	  dummyVel1[i] = glm::vec3(i * 1.0f);
-	  dummyPos1[i] = glm::vec3(i * 0.1f);
+	  dummyVel1[i] = glm::vec3(i * 1.0f, i * 1.0f, i * 1.0f);
+	  dummyPos1[i] = glm::vec3(i * 0.1f, i * 0.1f, i * 0.1f);
 	  std::cout << "pos: " << dummyPos1[i].x << std::endl;
   }
 
@@ -859,8 +858,9 @@ void Boids::unitTest() {
   cudaFree(dev_dummyVel1);
   cudaFree(dev_dummyShufflePos);
   cudaFree(dev_dummyShuffleVel);
+  cudaFree(dev_intValues);
   checkCUDAErrorWithLine("cudaFree failed!");
-  */
+  
 
   //test kernIdentifyStartEnd
   int *dev_dummyStartIndices;
