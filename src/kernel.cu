@@ -37,7 +37,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 *****************/
 
 /*! Block size used for CUDA kernel launch. */
-#define blockSize 128
+#define blockSize 512
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
@@ -447,6 +447,7 @@ __device__ bool shouldAddCell(glm::vec3 absPos, glm::ivec3 option, int gridResol
   if (option.x < 0 || option.y < 0 || option.z < 0 || option.x >= gridResolution || option.y >= gridResolution || option.z >= gridResolution) {
     return false;
   }
+  //return true;
   glm::vec3 diff =  glm::abs(glm::vec3(option) + glm::vec3(0.5f, 0.5f, 0.5f) - absPos);
   return diff.x <= 1.0f && diff.y <= 1.0f && diff.z <= 1.0f;
 }
@@ -652,47 +653,15 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 
   kernComputeIndices<<<fullBlocksPerGrid, blockSize>>>(numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
   auto values = thrust::make_zip_iterator(thrust::make_tuple(dev_thrust_pos, dev_thrust_vel));
-  //thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, dev_thrust_particleArrayIndices);
   thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, values);
 
-  /*int key[50];
-  glm::vec3 data[50];
-  glm::vec3 data2[50];
-  cudaMemcpy(key, dev_particleGridIndices, 50 * sizeof(int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(data, dev_pos, 50 * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-  std::cout << "before:\n";
-  for (int i = 0; i < 50; ++i) {
-    std::cout << "key: " << key[i] << " val: (" << data[i].x << ", " << data[i].y << ", " << data[i].z << ")\n";
-  }
-  cudaMemcpy(data2, dev_vel1, 50 * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-  std::cout << "after:\n";
-  for (int i = 0; i < 50; ++i) {
-    std::cout << "val: (" << data2[i].x << ", " << data2[i].y << ", " << data2[i].z << ")\n";
-  }*/
-  /*thrust::gather(dev_thrust_particleArrayIndices,
-                 dev_thrust_particleArrayIndices + numObjects,
-                 dev_thrust_pos_orig, dev_thrust_pos_rear);
-  thrust::gather(dev_thrust_particleArrayIndices,
-                 dev_thrust_particleArrayIndices + numObjects,
-                 dev_thrust_vel_orig, dev_thrust_vel_rear);
-
-  cudaMemcpy(data2, dev_pos_temp, 50 * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-  std::cout << "after:\n";
-  for (int i = 0; i < 50; ++i) {
-    std::cout << "val: (" << data2[i].x << ", " << data2[i].y << ", " << data2[i].z << ")\n";
-  }*/
-
   kernIdentifyCellStartEnd<<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
-
 
   kernUpdateVelNeighborSearchCoherent<<<fullBlocksPerGrid, blockSize>>>(numObjects, gridSideCount, gridMinimum, gridInverseCellWidth, gridCellWidth, dev_gridCellStartIndices, dev_gridCellEndIndices, dev_pos, dev_vel1, dev_vel2);
 
 
   kernUpdatePos<<<fullBlocksPerGrid, blockSize>>>(numObjects, dt, dev_pos, dev_vel2);
 
-//  dev_pos = dev_pos_temp;
-//  dev_thrust_pos_orig = thrust::device_ptr<glm::vec3>(dev_pos);
-//  dev_thrust_pos_rear = thrust::device_ptr<glm::vec3>(dev_pos_temp);
   dev_vel1 = dev_vel2;
   dev_thrust_vel = thrust::device_ptr<glm::vec3>(dev_vel1);
 }
@@ -701,6 +670,10 @@ void Boids::endSimulation() {
   cudaFree(dev_vel1);
   cudaFree(dev_vel2);
   cudaFree(dev_pos);
+  cudaFree(dev_particleArrayIndices);
+  cudaFree(dev_particleGridIndices);
+  cudaFree(dev_gridCellStartIndices);
+  cudaFree(dev_gridCellEndIndices);
 
   // TODO-2.1 TODO-2.3 - Free any additional buffers here.
 }
