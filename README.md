@@ -30,6 +30,12 @@ I measured the performance of the simulation by using the frames per second (FPS
 
 When measuring FPS, I tried to keep the running environment as consistent as possible. For example, I noticed that having Chrome open directly under the running simulation led to significantly lower framerates than when Visual Studio was open in that position. Thus, I always measured with Visual Studio open, and waited at least 10 seconds for each measurement in order to have a more stable and consistent FPS reading.
 
+Unless otherwise specified, the parameters used were as follows:
+
+* number of boids = 10000
+* block size = 128
+* cell width = 2 * neighborhood distance
+
 Below, I examine the effect of several parameters of the simulation on its performance.
 
 #### Number of boids
@@ -50,6 +56,18 @@ The graph above also includes data for the simulation's performance when visuali
 
 #### Block size
 
-Below is a graph showing how FPS changes for the various search algorithms as the block size increases. The block count is automatically adjusted in the code as the block size changes: `dim3 fullBlocksPerGrid((N + blockSize - 1) / blockSize);`
+Below is a graph showing how FPS changes for the various search algorithms as the block size increases. The block count is automatically adjusted in the code as the block size changes: `dim3 fullBlocksPerGrid((N + blockSize - 1) / blockSize);`.
 
 ![](images/graphBlockSize.png)
+
+For all search algorithms, we can notice a steady improvement in performance as the block size increases, but only up to 32. After that performance either drops slightly or remains constant, except for the coherent grid search, which hits a maximum at a block size of 128 instead.
+
+The likely reason for this behavior is that each warp that is dispatched to the GPU contains 32 threads. Thus, for block sizes smaller than 32, each warp is not being used in the most efficient way, since the warps would not be filled to their maximum capacity. For larger block sizes, there does not seem to be any gains for the naive and uniform grid algorithms. I am not sure why performance improves for the coherent grid at a block size of 128, but it is likely due to this being an optimal number where there are enough blocks (and thus, warps) to "hide" costly operations such as large memory reads (which are easier to hide due to the coherent memory access), but not so many so that the overhead of scheduling warps starts to outweight those positive effects.
+
+Here, we see that the rendering of boids acts as a bottleneck when running the simulation with visualization enabled. This time, this is true for all algorithms. The cost of rendering is also reduced by increasing block size, but only up to 32.
+
+#### Coherent grid
+
+Below is a graph showing how FPS changes the uniform and coherent grid approaches as the number of boids increases. 
+
+![](images/graphUniformVsCoherent.png)
