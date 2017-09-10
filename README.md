@@ -25,7 +25,7 @@ Block Size | Naïve(fps) | Scattered Uniform(fps)  | Coherent Uniform(fps)
 512 | 124 | 793 | 834
 
 * **increasing block size graph**
-![](images/analysise_1.jpg)
+![](images/analysise_1.JPG)
 
 
 * **increasing boids# table**
@@ -39,7 +39,7 @@ boids# | Naïve(fps) | Scattered Uniform(fps)  | Coherent Uniform(fps)
 
 
 * **increasing boids# graph**
-![](images/analysise_2.jpg)
+![](images/analysise_2.JPG)
 
 * **analysis:**
   * According to the data we listed above, if we keep boids number unchanged and increase our block size, fps of all three methods changes very slightly. In case of scattering uniform method, however, it drops around 50 fps from 64 block size to 512. It may be explained as 64 block size has a better utilization of SMs. Say if we have total 1024 threads and 16 GPU SMs, then we have 1024 / 64 = 16 blocks. In this case, we can run all 16 GPU SMs. However, if 512 block size, then we have 2 blocks, only 2 GPU SMs are really utilized and other 14 are just wasted.
