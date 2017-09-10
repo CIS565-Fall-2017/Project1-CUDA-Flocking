@@ -85,9 +85,9 @@ int *dev_gridCellEndIndices;   // to this cell?
 
 // TODO-2.3 - consider what additional buffers you might need to reshuffle
 // the position and velocity data to be coherent within cells.
-glm::vec3 *dev_pos_buffer;
-glm::vec3 *dev_vel1_buffer;
-glm::vec3 *dev_vel2_buffer;
+glm::vec3 *dev_pos_sorted;
+glm::vec3 *dev_vel1_sorted;
+glm::vec3 *dev_vel2_sorted;
 
 // LOOK-2.1 - Grid parameters based on simulation parameters.
 // These are automatically computed for you in Boids::initSimulation
@@ -184,14 +184,14 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&dev_gridCellEndIndices, gridCellCount * sizeof(int));
   checkCUDAErrorWithLine("cudaMalloc dev_gridCellEndIndices failed!");
 
-  cudaMalloc((void**)&dev_pos_buffer, N * sizeof(int));
-  checkCUDAErrorWithLine("cudaMalloc dev_pos_buffer failed!");
+  cudaMalloc((void**)&dev_pos_sorted, N * sizeof(glm::vec3));
+  checkCUDAErrorWithLine("cudaMalloc dev_pos_sorted failed!");
 
-  cudaMalloc((void**)&dev_vel1_buffer, N * sizeof(int));
-  checkCUDAErrorWithLine("cudaMalloc dev_vel1_buffer failed!");
+  cudaMalloc((void**)&dev_vel1_sorted, N * sizeof(glm::vec3));
+  checkCUDAErrorWithLine("cudaMalloc dev_vel1_sorted failed!");
 
-  cudaMalloc((void**)&dev_vel2_buffer, N * sizeof(int));
-  checkCUDAErrorWithLine("cudaMalloc dev_vel2_buffer failed!");
+  cudaMalloc((void**)&dev_vel2_sorted, N * sizeof(glm::vec3));
+  checkCUDAErrorWithLine("cudaMalloc dev_vel2_sorted failed!");
 
   dev_thrust_particleArrayIndices=thrust::device_pointer_cast(dev_particleArrayIndices);
   dev_thrust_particleGridIndices=thrust::device_pointer_cast(dev_particleGridIndices);
@@ -436,9 +436,9 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   // - Identify which cells may contain neighbors. This isn't always 8.
   glm::ivec3 cellIndex = (pos[index] - gridMin) * inverseCellWidth;
   cellIndex = cellIndex - 1;
-  cellIndex.x = imax(cellIndex.x, 0);
-  cellIndex.y = imax(cellIndex.y, 0);
-  cellIndex.z = imax(cellIndex.z, 0);
+  cellIndex.x = imax(0, cellIndex.x);
+  cellIndex.y = imax(0, cellIndex.y);
+  cellIndex.z = imax(0, cellIndex.z);
 
   glm::vec3 perceived_center = glm::vec3(0.0f);
   glm::vec3 c = glm::vec3(0.0f);
@@ -543,9 +543,9 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 
   glm::ivec3 cellIndex = (pos[index] - gridMin) * inverseCellWidth;
   cellIndex = cellIndex - 1;
-  cellIndex.x = imax(cellIndex.x, 0);
-  cellIndex.y = imax(cellIndex.y, 0);
-  cellIndex.z = imax(cellIndex.z, 0);
+  cellIndex.x = imax(0, cellIndex.x);
+  cellIndex.y = imax(0, cellIndex.y);
+  cellIndex.z = imax(0, cellIndex.z);
 
   glm::vec3 perceived_center = glm::vec3(0.0f);
   glm::vec3 c = glm::vec3(0.0f);
@@ -643,7 +643,7 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   //   Use 2x width grids.
   int N = numObjects;
   dim3 fullBlocksPerGrid((N + blockSize - 1) / blockSize);
-  dim3 N_BlocksPerGrid(std::ceil((float)gridCellCount / blockSize));
+  dim3 NBlocksPerGrid((gridCellCount + blockSize - 1) / blockSize);
 
   kernComputeIndices << <fullBlocksPerGrid, blockSize >> >(N, gridSideCount,
     gridMinimum, gridInverseCellWidth, dev_pos, dev_particleArrayIndices, 
@@ -654,10 +654,10 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   //   are welcome to do a performance comparison.
   thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + N, dev_thrust_particleArrayIndices);
 
-  kernResetIntBuffer << <N_BlocksPerGrid, threadsPerBlock >> >(gridCellCount, dev_gridCellStartIndices, -1);
+  kernResetIntBuffer << <NBlocksPerGrid, blockSize >> >(gridCellCount, dev_gridCellStartIndices, -1);
   checkCUDAErrorWithLine("kernResetIntBuffer for start indices failed!");
 
-  kernResetIntBuffer << <N_BlocksPerGrid, threadsPerBlock >> >(gridCellCount, dev_gridCellEndIndices, -1);
+  kernResetIntBuffer << <NBlocksPerGrid, blockSize >> >(gridCellCount, dev_gridCellEndIndices, -1);
   checkCUDAErrorWithLine("kernResetIntBuffer for end indices failed!");
 
   // - Naively unroll the loop for finding the start and end indices of each
@@ -689,9 +689,9 @@ void Boids::stepSimulationCoherentGrid(float dt) {
   //   Use 2x width grids
   int N = numObjects;
   dim3 fullBlocksPerGrid((N + blockSize - 1) / blockSize);
-  dim3 N_Blocks(std::ceil((float) N / blockSize));
-  dim3 N_BlocksPerGrid(std::ceil((float)gridCellCount / blockSize));
-  kernComputeIndices << <fullBlocksPerGrid, blockSize >> >(N, gridSideCount,
+  dim3 NBlocksPerGrid((gridCellCount + blockSize - 1) / blockSize);
+
+  kernComputeIndices << <fullBlocksPerGrid, threadsPerBlock >> >(N, gridSideCount,
     gridMinimum, gridInverseCellWidth, dev_pos, dev_particleArrayIndices,
     dev_particleGridIndices);
   checkCUDAErrorWithLine("kernComputeIndices failed!");
@@ -705,48 +705,48 @@ void Boids::stepSimulationCoherentGrid(float dt) {
   // - BIG DIFFERENCE: use the rearranged array index buffer to reshuffle all
   //   the particle data in the simulation array.
   //   CONSIDER WHAT ADDITIONAL BUFFERS YOU NEED
-  kernResetIntBuffer << <N_BlocksPerGrid, threadsPerBlock >> >(gridCellCount, dev_gridCellStartIndices, -1);
+  kernResetIntBuffer << <NBlocksPerGrid, threadsPerBlock >> >(gridCellCount, dev_gridCellStartIndices, -1);
   checkCUDAErrorWithLine("kernResetIntBuffer for start indices failed!");
 
-  kernResetIntBuffer << <N_BlocksPerGrid, threadsPerBlock >> >(gridCellCount, dev_gridCellEndIndices, -1);
+  kernResetIntBuffer << <NBlocksPerGrid, threadsPerBlock >> >(gridCellCount, dev_gridCellEndIndices, -1);
   checkCUDAErrorWithLine("kernResetIntBuffer for end indices failed!");
 
-  kernIdentifyCellStartEnd << <fullBlocksPerGrid, blockSize >> >(N, dev_particleGridIndices,
+  kernIdentifyCellStartEnd << <fullBlocksPerGrid, threadsPerBlock >> >(N, dev_particleGridIndices,
     dev_gridCellStartIndices, dev_gridCellEndIndices);
   checkCUDAErrorWithLine("kernIdentifyCellStartEnd failed!");
 
-  kernRearrangeDataPointers << <fullBlocksPerGrid, blockSize >> >(N, dev_pos, dev_pos_buffer,
+  kernRearrangeDataPointers << <fullBlocksPerGrid, threadsPerBlock >> >(N, dev_pos, dev_pos_sorted,
     dev_particleArrayIndices);
   checkCUDAErrorWithLine("kernRearrangeDataPointers for dev_pos failed!");
 
-  kernRearrangeDataPointers << <fullBlocksPerGrid, blockSize >> >(N, dev_vel1, dev_vel1_buffer,
+  kernRearrangeDataPointers << <fullBlocksPerGrid, threadsPerBlock >> >(N, dev_vel1, dev_vel1_sorted,
     dev_particleArrayIndices);
   checkCUDAErrorWithLine("kernRearrangeDataPointers for dev_vel1 failed!");
 
-  kernRearrangeDataPointers << <fullBlocksPerGrid, blockSize >> >(N, dev_vel2, dev_vel2_buffer,
+  kernRearrangeDataPointers << <fullBlocksPerGrid, threadsPerBlock >> >(N, dev_vel2, dev_vel2_sorted,
     dev_particleArrayIndices);
   checkCUDAErrorWithLine("kernRearrangeDataPointers for dev_vel2 failed!");
 
   //- Perform velocity updates using neighbor search
-  kernUpdateVelNeighborSearchCoherent << <fullBlocksPerGrid, blockSize >> >(N, gridSideCount, gridMinimum,
+  kernUpdateVelNeighborSearchCoherent << <fullBlocksPerGrid, threadsPerBlock >> >(N, gridSideCount, gridMinimum,
     gridInverseCellWidth, gridCellWidth, dev_gridCellStartIndices, dev_gridCellEndIndices,
-    dev_pos_buffer, dev_vel1_buffer, dev_vel2_buffer);
+    dev_pos_sorted, dev_vel1_sorted, dev_vel2_sorted);
   checkCUDAErrorWithLine("kernUpdateVelNeighborSearchCoherent failed!");
 
   // - Update positions
-  kernUpdatePos << <fullBlocksPerGrid, blockSize >> >(N, dt, dev_pos_buffer, dev_vel2_buffer);
+  kernUpdatePos << <fullBlocksPerGrid, threadsPerBlock >> >(N, dt, dev_pos_sorted, dev_vel2_sorted);
   checkCUDAErrorWithLine("kernUpdatePos failed!");
 
   // - Ping-pong buffers as needed. THIS MAY BE DIFFERENT FROM BEFORE.
-  kernSwapRearrangedDataPointers << <fullBlocksPerGrid, blockSize >> >(N, dev_pos, dev_pos_buffer,
+  kernSwapRearrangedDataPointers << <fullBlocksPerGrid, threadsPerBlock >> >(N, dev_pos, dev_pos_sorted,
     dev_particleArrayIndices);
   checkCUDAErrorWithLine("kernSwapRearrangedDataPointers for dev_pos failed!");
 
-  kernSwapRearrangedDataPointers << <fullBlocksPerGrid, blockSize >> >(N, dev_vel1, dev_vel2_buffer,
+  kernSwapRearrangedDataPointers << <fullBlocksPerGrid, threadsPerBlock >> >(N, dev_vel1, dev_vel2_sorted,
     dev_particleArrayIndices);
   checkCUDAErrorWithLine("kernSwapRearrangedDataPointers for dev_vel1 failed!");
 
-  kernSwapRearrangedDataPointers << <fullBlocksPerGrid, blockSize >> >(N, dev_vel2, dev_vel2_buffer,
+  kernSwapRearrangedDataPointers << <fullBlocksPerGrid, threadsPerBlock >> >(N, dev_vel2, dev_vel1_sorted,
     dev_particleArrayIndices);
   checkCUDAErrorWithLine("kernSwapRearrangedDataPointers for dev_vel2 failed!");
 }
@@ -762,9 +762,9 @@ void Boids::endSimulation() {
   cudaFree(dev_gridCellStartIndices);
   cudaFree(dev_gridCellEndIndices);
   
-  cudaFree(dev_pos_buffer);
-  cudaFree(dev_vel1_buffer);
-  cudaFree(dev_vel2_buffer);
+  cudaFree(dev_pos_sorted);
+  cudaFree(dev_vel1_sorted);
+  cudaFree(dev_vel2_sorted);
 }
 
 void Boids::unitTest() {
