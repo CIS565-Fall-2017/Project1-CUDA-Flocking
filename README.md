@@ -89,4 +89,10 @@ When the number of boids is small, the neighborhood distance is not such small, 
 
 **4. Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
 
-I think it will not affect the performance, but I'm not sure.
+Checking 27 neighboring cells will improve the performance, and the performance increases much more as the number of boids becomes bigger.
+
+When checking 27 neighboring cells, the width of each cell is the neighboring radius(R), and the whole volume of the 27 cells is 3 * 3 * 3 * (R^3) = 27 * (R^3).
+
+When checking 8 neighboring cells, the width of each cell is 2 times the neighboring radius, and the whole volume of the 8 cells is 4 * 4 * 4 * (R^3) = 64 * (R^3).
+
+So checking 27 neighboring cells has smaller volume and less number of boids to check.
