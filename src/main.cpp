@@ -7,6 +7,8 @@
 */
 
 #include "main.hpp"
+#include <iostream>
+#include <fstream>
 
 // ================
 // Configuration
@@ -14,7 +16,7 @@
 
 // LOOK-2.1 LOOK-2.3 - toggles for UNIFORM_GRID and COHERENT_GRID
 #define VISUALIZE 1
-#define UNIFORM_GRID 0
+#define UNIFORM_GRID 1
 #define COHERENT_GRID 0
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
@@ -223,6 +225,10 @@ void initShaders(GLuint * program) {
     Boids::unitTest(); // LOOK-1.2 We run some basic example code to make sure
                        // your CUDA development setup is ready to go.
 
+	std::ofstream outputFile;
+	std::string performanceFileName = "performanceAnalysis.csv";
+	outputFile.open(performanceFileName, std::ofstream::out);
+
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
 
@@ -234,6 +240,8 @@ void initShaders(GLuint * program) {
         timebase = time;
         frame = 0;
       }
+
+	  outputFile << time << "," << fps << std::endl;
 
       runCUDA();
 
@@ -261,6 +269,7 @@ void initShaders(GLuint * program) {
     }
     glfwDestroyWindow(window);
     glfwTerminate();
+	outputFile.close();
   }
 
 
