@@ -1,8 +1,22 @@
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture,
 Project 1 - Flocking**
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+**University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 0**
+
+* Mauricio Mutai
+* Tested on: Windows 10, i7-7700HQ @ 2.80GHz 16GB, GTX 1050Ti 4GB (Personal Computer)
+
+**Part 4:** Image showing title bar modified to have my name
+
+![](images/part4.PNG)
+
+**Part 5:** Image of *Timeline* from Nsight Performance Analysis
+
+![](images/part5.PNG)
+
+**Part 6:** Image of *Autos* and *CUDA Info -> Warp* from CUDA Debugging
+
+![](images/part6.PNG)
 
 ### (TODO: Your README)
 
