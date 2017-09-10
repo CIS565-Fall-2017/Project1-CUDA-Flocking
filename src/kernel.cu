@@ -629,9 +629,9 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 		for (int j = 0; j < 2; j++) {
 			for (int i = 0; i < 2; i++) {
 				// Determine which octant the boid's in the cell
-				int neighborX = (x + -i > 0) ? (x + -i) : 0;
-				int neighborY = (y + -j > 0) ? (y + -j) : 0;
-				int neighborZ = (z + -k > 0) ? (z + -k) : 0;
+				int neighborX = (x - i > 0) ? (x - i) : 0;
+				int neighborY = (y - j > 0) ? (y - j) : 0;
+				int neighborZ = (z - k > 0) ? (z - k) : 0;
 
 				// Get the index in the grid
 				int neighborCellIndex = gridIndex3Dto1D(neighborX, neighborY, neighborZ, gridResolution);
