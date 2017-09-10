@@ -54,7 +54,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 /*! Size of the starting area in simulation space. */
 #define scene_scale 100.0f
 
-#define GRID_SIZE_CHANGE 1
+#define GRID_SIZE_CHANGE 0
 /***********************************************
 * Kernel state (pointers are device pointers) *
 ***********************************************/

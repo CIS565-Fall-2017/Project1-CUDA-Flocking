@@ -38,6 +38,8 @@ It is a little bit weird that the coherent performs bad on 5000 boids. Maybe the
 
 ![](images/chart3.png)
 
+Number of boids is set to 10000.
+
 It seems that change of block size is not so important on running time. I guess if we use video card with lower performance this chart will be a lot different.
 
 # Chart Showing With Visualization
@@ -56,4 +58,14 @@ In kernel.cu line 57. Change value to 1 to test block with count of 27.
 
 * Analysis
 
-With 27 neighbor checking has higher fps then 8 neighbor checking, and with #boids increases, the fps advance becomes more obvious. This is because of the total volume checking actually becomes smaller, which means less boids to check in neighbor even with more grids.
+With 27 neighbor checking has higher fps then 8 neighbor checking, and with #boids increases, the fps difference becomes more clear to see. This is because of the total volume checking actually becomes smaller, which means less boids to check in neighbor even with more grids.
+
+# Performance testing with SLI
+
+![](images/chart6.png)
+
+It is clear that with SLI function working the fps rate drops. But with more boids the difference becomes not that clear.
+
+* Analysis:
+
+SLI will use some computation ability to arrange the workload of 2 video cards. And by default our cuda program will not use this feture autometically, so the graph actually shows the computation ability only for main video card. Not surprise to see this result.
