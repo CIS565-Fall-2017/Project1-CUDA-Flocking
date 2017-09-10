@@ -8,6 +8,15 @@ Project 1 - Flocking**
 
 ![](images/BOIDS.gif)
 
+# Time count and fps count method
+
+* FPS count
+
+In main.cpp, line 238 to line 239 and line 279 to line 282. Count fps for a range of time and then average them to get the result.
+
+* Running time count.
+
+In main.cpp, line 204 to line 207 and line 223 to line 230. Use Cuda event to get time for a range of time and print averaged running time.
 
 # Chart Showing Without Visualization
 
@@ -30,3 +39,15 @@ It seems that change of block size is not so important on running time. I guess 
 ![](images/chart4.png)
 
 FPS has a significant drop with visualization on. It is clear that copy data to VBO needs some time.
+
+# Performance with different gridCellWidth
+
+![](images/chart4.png)
+
+* Test Method:
+
+In kernel.cu line 57. Change value to 1 to test block with count of 27.
+
+* Analysis
+
+With 27 neighbor checking has higher fps then 8 neighbor checking, and with #boids increases, the fps advance becomes more obvious. This is because of the total volume checking actually becomes smaller, which means less boids to check in neighbor even with more grids.

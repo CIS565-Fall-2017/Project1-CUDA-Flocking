@@ -54,6 +54,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 /*! Size of the starting area in simulation space. */
 #define scene_scale 100.0f
 
+#define GRID_SIZE_CHANGE 1
 /***********************************************
 * Kernel state (pointers are device pointers) *
 ***********************************************/
@@ -160,6 +161,9 @@ void Boids::initSimulation(int N) {
 
   // LOOK-2.1 computing grid params
   gridCellWidth = 2.0f * std::max(std::max(rule1Distance, rule2Distance), rule3Distance);
+#if GRID_SIZE_CHANGE
+  gridCellWidth /= 2.0;
+#endif // DEBUG
   int halfSideCount = (int)(scene_scale / gridCellWidth) + 1;
   gridSideCount = 2 * halfSideCount;
 
@@ -430,6 +434,14 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int yEnd = yStart + 1;
 	int zStart = pos[index].z < posMid.z ? indexZ - 1 : indexZ;
 	int zEnd = zStart + 1;
+#if GRID_SIZE_CHANGE
+	xStart = indexX - 1;
+	xEnd = indexX + 1;
+	yStart = indexY - 1;
+	yEnd = indexY + 1;
+	zStart = indexZ - 1;
+	zEnd = indexZ + 1;
+#endif // DEBUG
 	if (xStart < 0) xStart = 0;
 	if (yStart < 0) yStart = 0;
 	if (zStart < 0) zStart = 0;
