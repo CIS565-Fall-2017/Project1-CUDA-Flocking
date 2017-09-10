@@ -6,11 +6,11 @@ Project 1 - Flocking**
 
 ### README
 #### Results
-![Naive Simulation 5000 Particles 27 Neighbor Search](/images/Naive5000neighbor27.gif)
-![Uniform Simulation 5000 Particles 27 Neighbor Search](/images/Uniform5000neighbor27.gif)
-![Coherent Simulation 5000 Particles 27 Neighbor Search](/images/Coherent5000neighbor27.gif)
-![Coherent Simulation 50000 Particles 27 Neighbor Search](/images/Coherent50000neighbor27.gif)
-![Coherent Simulation 500000 Particles 27 Neighbor Search](/images/Coherent500000neighbor27.gif)
+ ![NaiveSimulation5000Particles27NeighborSearch](/images/Naive5000neighbor27.gif)
+ ![UniformSimulation5000Particles27NeighborSearch](/images/Uniform5000neighbor27.gif)
+ ![CoherentSimulation5000Particles27NeighborSearch](/images/Coherent5000neighbor27.gif)
+ ![CoherentSimulation50000Particles27NeighborSearch](/images/Coherent50000neighbor27.gif)
+ ![CoherentSimulation500000Particles27NeighborSearch](/images/Coherent500000neighbor27.gif)
 
 #### Performance Analysis
 1. Performance Comparason between 3 simulation methods
@@ -42,13 +42,17 @@ The first plot is a comparason between the same simulation using different neigh
 
 #### Answers to Questions
 Q: For each implementation, how does changing the number of boids affect performance? Why do you think this is?
+
 A: Increasing number of boids slows down the performance. I think because the number of data retrieval from global memory increases as boids number increases. For naive simulation, the number of neighboring boids it need to go through increases. For uniform and coherent grid simulations, the number of threads increases, and GPU needs to schedule more threads to run.
 
 Q: For each implementation, how does changing the block count and block size affect performance? Why do you think this is?
+
 A: It seems that reducing block size / increasing block count improves performance. My guess is that having multiple smaller size blocks will optimize the register memory usage within each block, as a block with too many threads will not have enough register memory.
 
 Q: For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?
+
 A: Yes I expeted coherent uniform grid should performs better. However in my testing, with visual, coherent performs not much better than uniform grid. Without visual display, coherent performs slightly better than uniform grid. I think although the coherent grid reduces one level of the global memory data retreival, it requires two shuffle process and two additional array memory on GPU, therefore the tradoff makes the performance improvement not so obvious.
 
 Q: Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?
+
 A: As discussed in Performance Analysis Secion, part 4 above, it does affect the performance. As the volume occupancy of 27 grid is 27*distance^3, and volume occupancy of 8 grid is 64*distance^3, the number of boids encompassed in smaller volume is also fewer, therefore there are fewer neighboring boids we are checking in 27 neighbor.
