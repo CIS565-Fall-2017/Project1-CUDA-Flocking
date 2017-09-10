@@ -46,7 +46,7 @@ One thing that I noticed with changing the block size was that once I changed th
 ### Uniform vs. Coherent Grids
 With fewer boids, the difference between the Uniform and Coherent Grids seems pretty insignificant. However, as you increase the number of boids, the difference becomes extremely noticable. Searching using the Uniform Grid requires an extra lookup through `dev_particlesArrayIndices` whereas searching using the Coherent Grid does not. A single index can provide the boid's position, velocity, and grid cell. 
 
-![](images/uniformvscoherentdata.png)
+![](images/uniformvscoherentdata.PNG)
 
 ![](images/uniformvscoherent.png)    
 
