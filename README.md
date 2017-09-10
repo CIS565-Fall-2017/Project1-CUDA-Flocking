@@ -1,10 +1,12 @@
-**University of Pennsylvania, CIS 565: GPU Programming and Architecture,
-Project 1 - Flocking**
+# University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 1 - Flocking
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+* Qiaoyu Zhang
+* Tested on:
+  * Windows 10, i7-6700 @ 3.40GHz 64GB, GTX 1070 8192MB (Personal Desktop)
+  * Ubuntu 16.04, i7-6700HQ @ 3.50GHz 16GB, GTX 1060 6144MB (Personal Laptop)
 
-### (TODO: Your README)
+## Summary
 
-Include screenshots, analysis, etc. (Remember, this is public, so don't put
-anything here that you don't want to share with the world.)
+This project implements a flocking simulation based on the [Reynolds Boids algorithm](http://www.red3d.com/cwr/boids/) on a GPU using CUDA and OpenGL, along with two levels of optimization: a univorm grid, and a uniform grid with semi-coherent memory access.
+
+## Result
