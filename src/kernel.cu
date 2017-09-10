@@ -37,7 +37,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 *****************/
 
 /*! Block size used for CUDA kernel launch. */
-#define blockSize 128
+#define blockSize 512
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
@@ -293,8 +293,8 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 	if (rule3num > 0)
 	{
 		perceived_velocity /= float(rule3num);
+		rule3vel = perceived_velocity * rule3Scale;
 	}
-	rule3vel = perceived_velocity * rule3Scale;
 	return rule1vel + rule2vel + rule3vel;
 }
 
@@ -351,7 +351,14 @@ __global__ void kernUpdatePos(int N, float dt, glm::vec3 *pos, glm::vec3 *vel) {
 //            for(y)
 //             for(z)? Or some other order?
 __device__ int gridIndex3Dto1D(int x, int y, int z, int gridResolution) {
-  return x + y * gridResolution + z * gridResolution * gridResolution;
+	if (x<0 || x>gridResolution || x<0 || x>gridResolution || x<0 || x>gridResolution)
+	{
+		return -1;
+	}
+	else
+	{
+		return x + y * gridResolution + z * gridResolution * gridResolution;
+	}
 }
 
 __global__ void kernComputeIndices(int N, int gridResolution,
@@ -397,6 +404,10 @@ __global__ void kernIdentifyCellStartEnd(int N, int *particleGridIndices,
 		gridCellStartIndices[gridindex] = index;
 		return;
 	}
+	if (index == N - 1)
+	{
+		gridCellEndIndices[gridindex] = index;
+	}
 	int previousgridindex = particleGridIndices[index - 1];
 	if (gridindex != previousgridindex)
 	{
@@ -441,15 +452,18 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	int offsetx = (gridIndices3D.x - indexx) >= 0.5f ? 1 : -1;
 	int offsety = (gridIndices3D.y - indexy) >= 0.5f ? 1 : -1;
 	int offsetz = (gridIndices3D.z - indexz) >= 0.5f ? 1 : -1;
-	neighborcell[0] = gridIndex3Dto1D(indexx, indexy, indexz, gridResolution);
-	neighborcell[1] = gridIndex3Dto1D(indexx + offsetx, indexy, indexz, gridResolution);
-	neighborcell[2] = gridIndex3Dto1D(indexx, indexy + offsety, indexz, gridResolution);
-	neighborcell[3] = gridIndex3Dto1D(indexx, indexy, indexz + offsetz, gridResolution);
-	neighborcell[4] = gridIndex3Dto1D(indexx + offsetx, indexy + offsety, indexz, gridResolution);
-	neighborcell[5] = gridIndex3Dto1D(indexx, indexy + offsety, indexz + offsetz, gridResolution);
-	neighborcell[6] = gridIndex3Dto1D(indexx + offsetx, indexy, indexz + offsetz, gridResolution);
-	neighborcell[7] = gridIndex3Dto1D(indexx + offsetx, indexy + offsety, indexz + offsetz, gridResolution);
-
+	int count = 0;
+	for (int i = 0; i < 2; i++)
+	{
+		for (int j = 0; j < 2; j++)
+		{
+			for (int k = 0; k < 2; k++)
+			{
+				neighborcell[count] = gridIndex3Dto1D(indexx + i*offsetx, indexy + j*offsety, indexz + k*offsetz, gridResolution);
+				count++;
+			}
+		}
+	}
 	glm::vec3 rule1vel(0.f);
 	glm::vec3 rule2vel(0.f);
 	glm::vec3 rule3vel(0.f);
@@ -463,6 +477,10 @@ __global__ void kernUpdateVelNeighborSearchScattered(
   //   the boids rules, if this boid is within the neighborhood distance.
 	for (int i = 0; i < 8; i++)
 	{
+		if (neighborcell[i] == -1)
+		{
+			continue;
+		}
 		for (int j = gridCellStartIndices[neighborcell[i]]; j < gridCellEndIndices[neighborcell[i]]; j++)
 		{
 			int k = particleArrayIndices[j];
@@ -498,8 +516,8 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	if (rule3num > 0)
 	{
 		perceived_velocity /= float(rule3num);
+		rule3vel = perceived_velocity * rule3Scale;
 	}
-	rule3vel = perceived_velocity * rule3Scale;
 
 	glm::vec3 newvel = vel1[boidindex] + rule1vel + rule2vel + rule3vel;
   // - Clamp the speed change before putting the new speed in vel2
@@ -534,15 +552,18 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	int offsetx = (gridIndices3D.x - indexx) >= 0.5f ? 1 : -1;
 	int offsety = (gridIndices3D.y - indexy) >= 0.5f ? 1 : -1;
 	int offsetz = (gridIndices3D.z - indexz) >= 0.5f ? 1 : -1;
-	neighborcell[0] = gridIndex3Dto1D(indexx, indexy, indexz, gridResolution);
-	neighborcell[1] = gridIndex3Dto1D(indexx + offsetx, indexy, indexz, gridResolution);
-	neighborcell[2] = gridIndex3Dto1D(indexx, indexy + offsety, indexz, gridResolution);
-	neighborcell[3] = gridIndex3Dto1D(indexx, indexy, indexz + offsetz, gridResolution);
-	neighborcell[4] = gridIndex3Dto1D(indexx + offsetx, indexy + offsety, indexz, gridResolution);
-	neighborcell[5] = gridIndex3Dto1D(indexx, indexy + offsety, indexz + offsetz, gridResolution);
-	neighborcell[6] = gridIndex3Dto1D(indexx + offsetx, indexy, indexz + offsetz, gridResolution);
-	neighborcell[7] = gridIndex3Dto1D(indexx + offsetx, indexy + offsety, indexz + offsetz, gridResolution);
-
+	int count = 0;
+	for (int i = 0; i < 2; i++)
+	{
+		for (int j = 0; j < 2; j++)
+		{
+			for (int k = 0; k < 2; k++)
+			{
+				neighborcell[count] = gridIndex3Dto1D(indexx + i*offsetx, indexy + j*offsety, indexz + k*offsetz, gridResolution);
+				count++;
+			}
+		}
+	}
 	glm::vec3 rule1vel(0.f);
 	glm::vec3 rule2vel(0.f);
 	glm::vec3 rule3vel(0.f);
@@ -558,6 +579,10 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
   //   the boids rules, if this boid is within the neighborhood distance.
 	for (int i = 0; i < 8; i++)
 	{
+		if (neighborcell[i] == -1)
+		{
+			continue;
+		}
 		for (int j = gridCellStartIndices[neighborcell[i]]; j < gridCellEndIndices[neighborcell[i]]; j++)
 		{
 			if (j != index)
@@ -592,8 +617,8 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 	if (rule3num > 0)
 	{
 		perceived_velocity /= float(rule3num);
+		rule3vel = perceived_velocity * rule3Scale;
 	}
-	rule3vel = perceived_velocity * rule3Scale;
 
 	glm::vec3 newvel = vel1[index] + rule1vel + rule2vel + rule3vel;
   // - Clamp the speed change before putting the new speed in vel2
