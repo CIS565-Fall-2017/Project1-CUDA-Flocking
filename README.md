@@ -7,7 +7,7 @@ Project 1 - Flocking**
 ## Results
 ___
 
-![](./results_images/result1.gif)
+![](./results_images/result_corrected.gif)
 The result above is **"Coherent Boids Flocking"**. The Parameters are as below:
 * *N_FOR_VIS* = `10000`
 * *DT* = `0.2f`
