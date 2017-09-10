@@ -234,13 +234,14 @@ void initShaders(GLuint * program) {
       if (time - timebase > 1.0) {
         fps = frame / (time - timebase);
         timebase = time;
-		if (time < 120)
+		// recording time-fps results
+		/*if (time < 120)
 		{
 			fprintf(fp, "%lf   %lf\n", time, fps);
 
 		}
 		else
-			break; 
+			break; */
 		frame = 0;
       }
 
