@@ -91,3 +91,8 @@ However, for a large amount of boids, things are different. I think memory coher
 
 **Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?**
 
+I believe if the cell width is in a reasonable range the performance should almost the same.
+However, if the cell width is too small, the constructe and update the grid should occupy a huge kernel time.
+If the cell width is too big, there seems to be no reasons to use the grid to accelerate searching.
+
+For checking 27 vs 8 neighboring cells, I guess 8 neighboring should be slightly faster.
