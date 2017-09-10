@@ -5,6 +5,9 @@ Project 1 - Flocking**
 * Tested on: Windows 10, i7-4870HQ @ 2.50GHz 16GB, GeForce GT 750M 2048MB (personal computer)
 
 
+![](images/demo2-10000.gif)
+
+
 ## Project Overview
 
 The goal of this project was to get an introduction to utilizing CUDA kernels - an optimization technique that runs code parallel on the GPU. For this project, a "boid" flocking system was implemented based on the Reynolds Boids algorithm.
