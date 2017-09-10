@@ -6,16 +6,20 @@ Project 1 - Flocking**
 
 ### README
 #### Results
-Naive Simulation 5000Particles 27 NeighborSearch
 ![Naive Simulation 5000Particles 27 NeighborSearch](/images/Naive5000neighbor27.gif)
-UniformSimulation 5000Particles 27 NeighborSearch
+                             Naive Simulation 5000Particles 27 NeighborSearch
+
 ![UniformSimulation 5000Particles 27 NeighborSearch](/images/Uniform5000neighbor27.gif)
-CoherentSimulation 5000Particles 27NeighborSearch
+                             UniformSimulation 5000Particles 27 NeighborSearch
+
 ![CoherentSimulation 5000Particles 27NeighborSearch](/images/Coherent5000neighbor27.gif)
-CoherentSimulation 50000Particles 27NeighborSearch
+                             CoherentSimulation 5000Particles 27NeighborSearch
+
 ![CoherentSimulation 50000Particles 27NeighborSearch](/images/Coherent50000neighbor27.gif)
-CoherentSimulation 500000Particles 27NeighborSearch
+                             CoherentSimulation 50000Particles 27NeighborSearch
+
 ![CoherentSimulation 500000Particles 27NeighborSearch](/images/Coherent500000neighbor27.gif)
+                             CoherentSimulation 500000Particles 27NeighborSearch
 
 #### Performance Analysis
 1. Performance Comparason between 3 simulation methods
