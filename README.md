@@ -82,4 +82,4 @@ This is the outcome I expected. Prior to running the measurements, I theorized t
 
 Below is a graph showing how FPS changes for the grid-based approaches as the number of boids increases. This is graph shows two versions of each algorithm: one where the grid cells have a width of one neighborhood distance (so at most 27 cells are checked per boid), while the other has grid cells with double that width (at most 8 cells are checked per boid). The measurements were taken with visualization disabled.
 
-![](images/graphUniformVsCoherent.png)
+![](images/graphCellWidth.png)
