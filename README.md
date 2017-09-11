@@ -16,6 +16,9 @@ Running Mode: unifor grid
 
 Threads: (128, 1, 1)
 
+Time step: 0.5
+
+
 ## 2. Analysis of Performance
 ### Algorithms
 
