@@ -986,7 +986,6 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	checkCUDAErrorWithLine("kernIdentifyCellStartEnd failed!");
 
 
-
   // - BIG DIFFERENCE: use the rearranged array index buffer to reshuffle all
   //   the particle data in the simulation array.
   //   CONSIDER WHAT ADDITIONAL BUFFERS YOU NEED
@@ -1018,6 +1017,7 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	dev_vel1 = dev_vel2;
 	dev_vel2 = temp;
 }
+
 
 void Boids::endSimulation() {
   cudaFree(dev_vel1);
