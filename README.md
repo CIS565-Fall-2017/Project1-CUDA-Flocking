@@ -30,10 +30,11 @@ Once the particle count reaches 100,000 it stays within a 2 fps range.
 
 For these tests, each rule was as follows:
 
-Rule #		Radius		Strength
-1			8			0.01
-2			4			0.1
-3			5			0.1
+|Rule # | Radius | Strength |
+| --- | --- | --- |
+| 1 | 8 | 0.01 |
+| 2 | 4 | 0.1 |
+| 3 | 5 | 0.1 |
 
 ![](./images/FPSMethod.png)
 
@@ -48,11 +49,12 @@ Memory coherence was a massive benefit to FPS. My measurements show an 18% incre
 
 I tested FPS with 100,000 particles with a memory-coherent uniform grid.
 
-Radius		FPS
-16.0		6 - 8
-12.0		13 - 14
-8.0			32 - 33
-4.0			122 - 123
+| Radius | FPS |
+| --- | --- |
+| 16.0 | 6 - 8 |
+| 12.0 | 13 - 14 |
+| 8.0 | 32 - 33 |
+| 4.0 | 122 - 123 |
 
 As the radius increases, the particles are divided into fewer cells, thus each particle must check more neighbors. This, of course, converges to a worse version of the naive algorithm.
 
@@ -60,13 +62,14 @@ As the radius increases, the particles are divided into fewer cells, thus each p
 
 Using the same rules outlined in Algorithm Differences, 100,000 particles and coherence:
 
-Size		FPS
-16			17 - 18
-32			30 - 32
-64			31 - 32
-128			32 - 33
-256			30 - 31
-512			30 - 31
+| Size | FPS |
+| --- | --- |
+| 16 | 17 - 18 |
+| 32 | 30 - 32 |
+| 64 | 31 - 32 |
+| 128 | 32 - 33 |
+| 256 | 30 - 31 |
+| 512 | 30 - 31 |
 
 Varying block sizes have only marginal differences for this algorithm at this number of particles. 128 is ideal (barely) and 16 is a significant downgrade from 32. This makes sense because each block will not have a full working warp.
 256 and 512 are marginally different. My GPU has a max block dimension of (1024, 1024, 64).
