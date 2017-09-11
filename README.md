@@ -18,12 +18,18 @@ read times - see INSTRUCTION.md for more.
 ### Analysis
 
 **Data**
+
 I'm just going to throw some stats at you. Here are how the various implementations performed:
-![](images/graph1.png)
+
+![](igraph1.png)
 Here we see that the naive implementation falls off rather quickly, as we would expect. The uniform grid blows that out of the water, and the coherent memory optimization is still appreciably better than that!
-![](images/graph2.png)
+
+![](graph2.png)
+
 Turning off the visualization allows for awesomely high performance, but only when using one of the grid implementations.
-[](images/graph3.png)
+
+[](graph3.png)
+As we will discuss below, the warp size on my laptop's GPU, the GTX 1050, is 32, so the performance plateau's after increasing the blocksize to 32, as expected.
 
 **Questions:**
 * For each implementation, how does changing the number of boids affect
