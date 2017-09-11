@@ -18,8 +18,8 @@
 #define COHERENT_GRID 0
 
 // LOOK-1.2 - change this to adjust particle count in the simulation
-const int N_FOR_VIS = 10000;
-const float DT = 0.1f;
+const int N_FOR_VIS = 7500;
+const float DT = 0.2f;
 
 /**
 * C main function.
@@ -241,7 +241,8 @@ void initShaders(GLuint * program) {
       ss << "[";
       ss.precision(1);
       ss << std::fixed << fps;
-      ss << " fps] " << deviceName;
+      ss << " fps] " 
+		  << "[average time: " << Boids::avgTime << "] " << deviceName;
       glfwSetWindowTitle(window, ss.str().c_str());
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
