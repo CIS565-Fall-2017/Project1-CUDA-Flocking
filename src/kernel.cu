@@ -170,7 +170,7 @@ void Boids::initSimulation(int N) {
   gridMinimum.x -= halfGridWidth;
   gridMinimum.y -= halfGridWidth;
   gridMinimum.z -= halfGridWidth;
-
+  
   // TODO-2.1 TODO-2.3 - Allocate additional buffers here.
   //int *dev_particleArrayIndices; // What index in dev_pos and dev_velX represents this particle?
   cudaMalloc((void**)&dev_particleArrayIndices, N * sizeof(int));
@@ -780,7 +780,7 @@ void Boids::stepSimulationNaive(float dt) {
 void Boids::stepSimulationScatteredGrid(float dt) {
 	
 	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
-
+	
 	// TODO-2.1
 	// Uniform Grid Neighbor search using Thrust sort.
 	// In Parallel:

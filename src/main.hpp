@@ -47,7 +47,7 @@ double lastX;
 double lastY;
 float theta = 1.22f;
 float phi = -0.70f;
-float zoom = 4.5f;
+float zoom = 5.5f;
 glm::vec3 lookAt = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 cameraPosition;
 
