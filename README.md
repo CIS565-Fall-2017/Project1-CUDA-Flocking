@@ -49,4 +49,16 @@ I did experience a significant performance improvement, which I expected. By rem
 
 *Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?*
 
-I have not yet completed this analysis.
+Yes, changing the cell width and checking more neighboring cells did impact performance.
+
+|![One Neighbor Uniform, 20k Boids](images/wisp1.gif)|![Two Neighbor Uniform, 20k Boids](images/wisp2.gif)|![Three Neighbor Uniform, 20k Boids](images/wisp3.gif)|
+|:-:|:-:|:-:|
+|One Neighbor Uniform, 20k Boids|Two Neighbor Uniform, 20k Boids|Three Neighbor Uniform, 20k Boids|
+
+### Framerate vs Boid Count among Different Uniform Strategies
+
+<p align="center">
+  <img src="images/block_chart.png"/>
+</p>
+
+This graph compares the performance of the Uniform flocking strategy with three different settings for the number of neighboring cells to check. The case of checking eight cells is just the same performance data for the earlier Uniform strategy, as this is its default setting. We see that when we reduce the number of checks to just one cell, performance increases dramatically. This is understandable, since there are fewer cells being taken into consideration as overhead when calculating new velocities. Similarly, increasing the number of neighboring cells to check decreases performance.
