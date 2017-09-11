@@ -5,19 +5,13 @@ Project 1 - Flocking**
 * Tested on: Windows 10, i5-4590 @ 3.30GHz 8GB, GTX 970 4GB (Personal)
 
 ## Results
-Images taken at the point for each strategy where FPS is right about 60:
+Each of the following clips are recorded at the point for each strategy where framerate is approximately 60.
 
-<p align="center">
-  <img src="https://i.imgur.com/gy1iB67.gif"/>
-</p>
+|![Bruteforce, 20k Boids](images/liceBrute20k.gif)|![Uniform, 100k Boids](images/liceUniform100k.gif)|![Coherent, 250k Boids](images/liceCoherent350k.gif)|
+|:-:|:-:|:-:|
+|Bruteforce, 20k Boids|Uniform, 100k Boids|Coherent, 350k Boids|
 
-![Bruteforce, 60fps](https://i.imgur.com/gy1iB67.gif)
-
-![Uniform, 60fps](https://i.imgur.com/MkXvY5p.gif)
-
-![Coherent, 60fps](https://i.imgur.com/ddZ9DOI.gif)
-
-20k boids for Bruteforce, 100k for Uniform, and 350k for Coherent.
+All three clips are recorded in release mode from the Visual Studio debugger, with a block size of 128.
 
 ## Analysis
 
