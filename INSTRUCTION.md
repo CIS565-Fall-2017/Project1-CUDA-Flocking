@@ -110,9 +110,7 @@ function rule2(Boid boid)
 
     foreach Boid b
         if b != boid and distance(b, boid) < rule2Distance then
-            if |b.position - boid.position| < 100 then
-                c -= (b.position - boid.position)
-            endif
+            c -= (b.position - boid.position)
         endif
     end
 
@@ -351,6 +349,7 @@ See `Boids::unitTest` in `kernel.cu` for an example of how to use this.
 - Your README.md will be done in github markdown. You can find a [cheatsheet here](https://guides.github.com/pdfs/markdown-cheatsheet-online.pdf). There is
 also a [live preview plugin](https://atom.io/packages/markdown-preview) for the
 [atom text editor](https://atom.io/) from github. The same for [VS Code](https://www.visualstudio.com/en-us/products/code-vs.aspx)
+- If your framerate is capped at 60fps, [disable V-sync](http://support.enmasse.com/tera/enable-v-sync-to-fix-graphics-issues-screen-tearing)
 
 ## Optional Extra Credit
 Add fast nearest neighbor search using shared memory and the uniform grid. If you choose to tackle this problem, have it done before Project 5. Include additional graphs and performance analysis, showing clearly how much better the program performed using shared memory.

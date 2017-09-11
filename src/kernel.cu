@@ -188,8 +188,7 @@ void Boids::initSimulation(int N) {
 
   //2.3 buffers
  
-
-  cudaThreadSynchronize();
+  cudaDeviceSynchronize();
 }
 
 
@@ -235,7 +234,7 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 
   checkCUDAErrorWithLine("copyBoidsToVBO failed!");
 
-  cudaThreadSynchronize();
+  cudaDeviceSynchronize();
 }
 
 
