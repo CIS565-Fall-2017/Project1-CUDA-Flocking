@@ -2,7 +2,7 @@
 Project 1 - Flocking**
 
 * RISHABH SHAH
-* Tested on: Windows 10, i7-6700HQ @ 2.6GHz 16GB, GTX 960M 4096MB (Personal Computer)
+* Tested on: Windows 10, i7-6700HQ @ 2.6GHz 16GB, GTX 960M 4096MB (Laptop)
 
 ### Boids Flocking Simulation on GPU
 
