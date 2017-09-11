@@ -5,8 +5,8 @@ Project 1 - Flocking**
 * Tested on: Windows 10, i7-7700HQ @ 2.80GHz 16GB, GTX 1050Ti 4GB (Personal Computer)
 
 | ![](images/boids-50k-short.gif) | ![](images/boids-100k-short.gif) | ![](images/boids-500k.gif) |
-|---------------------------------|----------------------------------|----------------------------|
-
+|:-------------------------------:|:--------------------------------:|:--------------------------:|
+| 50,000 boids                    | 100,000 boids                    | 500,000 boids
 ### Overview
 
 #### Introduction
@@ -98,3 +98,11 @@ For N = 5000, the difference in performance between the 1-width and 2-width vers
 For the uniform grid method, we can notice that the 1-width version begins to outperform the 2-width version at N = 10000. However, for larger N (say, N = 100000), their framerates start converging. This is likely because other costly operations, such as scattered memory accesses, start bottlenecking the performance, reducing the effect of the cell width.
 
 As for the coherent grid method, the 1-width and 2-width versions have comparable performances for N = 10000 and N = 15000. For N >= 20000, the 1-width has noticeably better performance, and it remains better up through N = 100000. This is likely because the coherent grid does not run into the same bottleneck as the uniform grid, so the 1-width versions keeps benefitting from the reduced number of boids checked at each step.
+
+### Miscellanous Details
+
+`USE_SINGLE_WIDTH_CELL` in `kernel.cu` changes whether the grid-based algorithms use 1-width or 2-width cells. If set to 0, they use 2-width cells; otherwise, they use 1-width cells.
+
+I doubled the resolution and size of my boids when measuring FPS. For the GIFs included here, I opted to revert back to the original resolution to get better framerates on the GIFs.
+
+The three GIFs at the top were rendered with coherent grid, block size = 128 and 1-width cells. The 500k simulation managed to bring performance down to 60 FPS.
