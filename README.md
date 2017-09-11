@@ -4,7 +4,8 @@ Project 1 - Flocking**
 * Mauricio Mutai
 * Tested on: Windows 10, i7-7700HQ @ 2.80GHz 16GB, GTX 1050Ti 4GB (Personal Computer)
 
-![](images/boids-50k-short.gif) ![](images/boids-100k-short.gif) ![](images/boids-500k.gif)
+| ![](images/boids-50k-short.gif) | ![](images/boids-100k-short.gif) | ![](images/boids-500k.gif) |
+|---------------------------------|----------------------------------|----------------------------|
 
 ### Overview
 
