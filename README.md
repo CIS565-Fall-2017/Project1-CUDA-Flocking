@@ -16,3 +16,6 @@ Images taken at the point for each strategy where FPS is right about 60:
 20k boids for Bruteforce, 100k for Uniform, and 350k for Coherent.
 
 ### Analysis
+
+FPS vs Boid Count
+![Coherent wins](images/fps_chart.png)
