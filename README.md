@@ -13,7 +13,7 @@ one of the better ones being to utilize a spatial uniform grid to accelerate the
 we would be forced to iterate over each boid to process them individually, which is valid, but doesn't scale up well. So, we harness the power of the GPU through CUDA to simulate these Boids in parallel.
 
 The naive way of computing how a Boid should move is to check every other Boid in the simulation. However, Boids have a finite (and usually small) neighborhood radius, and only are affected by Boids within that radius.
-Ideally, we do not have to bother checking faraway Boids that will have no effect on the Boid in question. As mentioned before, a Uniform Grid is utilized to narrow down the Boid that must be checked to only those in the
+Ideally, we do not have to bother checking faraway Boids that will have no effect on the Boid in question. As mentioned before, a Uniform Grid is utilized to narrow down the Boids that must be checked to only those in the
 cells next to a given Boid. To further accelerate things, steps are taken to ensure that the arrays containing the Boid information (position and velocity) are arranged in the same way as the uniform grid indices for faster
 read times - see INSTRUCTION.md for more.
 
