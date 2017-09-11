@@ -47,8 +47,8 @@ Simulation using Coherent Uniform Grid at 10k boids:
 
 
 
-#### Features
-:
+### Features
+
 
 
 - [x] **Naiive Implementation:** 
@@ -69,7 +69,7 @@ my GPU runs it at ~770 FPS easily.
 
 
 
-#### Analysis:
+### Analysis:
 
 
 
@@ -90,7 +90,7 @@ This is how it looks in line graph form
 
 
 
-#### Observations:
+### Observations:
 
 * For each implementation, how does changing the number of boids affect 
 performance? Why do you think this is?
@@ -125,7 +125,7 @@ Why or why not?
 
 
 
-#### Blooper
+### Blooper
 
 So this happened. I call it Neon Cube.
 
