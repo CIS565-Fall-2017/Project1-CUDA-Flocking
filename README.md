@@ -63,3 +63,5 @@ Skipping cells based on neighborhood distance: Instead of just looping over the 
     -   This is a comparison of the performance changes with visualization on, visualization off, and with smaller cell size (+ visualization off)
 
     ![](./images/chart_comparison.png)
+
+#### src/CMakeLists.txt changes: OPTIONS -arch=sm_50
