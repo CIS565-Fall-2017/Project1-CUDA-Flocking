@@ -6,6 +6,6 @@ Project 1 - Flocking**
 
 ### ReadMe
 
-![](images/Boids Screenshot1.PNG)
+![](images/Boids%20Screenshot1.PNG)
 
 ### Analysis
