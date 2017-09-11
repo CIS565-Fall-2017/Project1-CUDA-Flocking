@@ -32,6 +32,9 @@ For evaluating performance, I used time per frame in milliseconds and disabled t
   A closer look at lower particle count shows the initial overhead due to implementation.
 
 * For each implementation, how does changing the block count and block size affect performance? Why do you think this is?
+  * Increasing block count affects performance until the amount of concurrent threads is enough to evaluate all the particles. After this point, there are no performance gains.
+  ![](images/analysis_blocks.png)
+  It is interesting to see how the brute force approach suffers the most from lower block count. This is due to its O(N^2) nature being hidden by adding more threads.
 
 
 * For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?
