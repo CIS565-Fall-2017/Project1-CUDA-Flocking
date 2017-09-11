@@ -41,5 +41,8 @@ For evaluating performance, I used time per frame in milliseconds and disabled t
 
 * Changing cell width affects the amount of cells that need to be checked when searching for neighbor particles. For the neighbor cell search, I use the flocking maximum radius to build a bounding volume of the search sphere. Then, I look for cells that intersect with this AABB, but then also filter cells by checking the actual collision with the sphere, so that corner cases can be properly ignored and potentially thousands of iterations prevented. However, I suspect that the AABB-sphere collision check adds a bit of overhead.
 
+  ![](images/analysis_aabb.png)
+  * The ignored cell is initially considered but then discarded after intersection checking.
+
   ![](images/analysis_grid_width.png)
   * As this image shows, if the width is half the maximum neighbor radius, there are some performance gains. This happens because the amount of particles per grid cell is less, thus the cells on the periphery of the radius are better ignored. With other widths, such as 1/4x or 4x, performance drops.
