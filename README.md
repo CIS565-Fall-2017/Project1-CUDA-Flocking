@@ -9,23 +9,22 @@ Tested on: Windows 10, Intel Core i7-7700HQ CPU @ 2.80 GHz, 8GB RAM, NVidia GeFo
  ![Built](https://img.shields.io/appveyor/ci/gruntjs/grunt.svg) ![Issues](https://img.shields.io/github/issues-raw/badges/shields/website.svg) ![CUDA 8.0](https://img.shields.io/badge/CUDA-8.0-green.svg?style=flat)  ![Platform](https://img.shields.io/badge/platform-Desktop-bcbcbc.svg)  ![Developer](https://img.shields.io/badge/Developer-Youssef%20Victor-0f97ff.svg?style=flat)
 
 
+
  
  
 - [Features](#features)
- 
+
 
 
   - [Analysis](#analysis)
  
 
+
  
 
   - [Observations](#observations)
- 
 
- 
 
- 
 
   - [Blooper](#blooper)
  
@@ -49,8 +48,8 @@ Simulation using Coherent Uniform Grid at 10k boids:
 
 
 #### Features
-
 :
+
 
 - [x] **Naiive Implementation:** 
 In the naiive implementation, nearest neighbour search loops across all other boids. Inefficient.
