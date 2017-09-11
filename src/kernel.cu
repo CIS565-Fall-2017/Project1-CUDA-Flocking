@@ -567,6 +567,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 
 	// check grid cells at x (+ qX), y (+ qY), z (+ qZ)
 	// add to Vel2
+	
 	checkGridCellAndUpdateVel(x, y, z, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, index);
 	checkGridCellAndUpdateVel(x, y, z + qZ, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, index);
 	checkGridCellAndUpdateVel(x, y + qY, z, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, index);
@@ -575,7 +576,17 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	checkGridCellAndUpdateVel(x + qX, y, z + qZ, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, index);
 	checkGridCellAndUpdateVel(x + qX, y + qY, z, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, index);
 	checkGridCellAndUpdateVel(x + qX, y + qY, z + qZ, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, index);
-
+	
+	/*
+	// USED FOR TESTING CHECKING 27 GRID CELLS
+	for (int i = -1; i < 2; i++) {
+		for (int j = -1; j < 2; j++) {
+			for (int k = -1; k < 2; k++) {
+				checkGridCellAndUpdateVel(x + i, y + j, z + k, gridResolution, gridCellStartIndices, gridCellEndIndices, particleArrayIndices, pos, vel1, vel2, index);
+			}
+		}
+	}
+	*/
 	if (glm::length(vel2[index]) > maxSpeed) {
 		vel2[index] = glm::normalize(vel2[index]) * maxSpeed;
 	}
