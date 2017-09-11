@@ -5,11 +5,15 @@ Project 1 - Flocking**
 * Tested on: Windows 10, i7-7700 @ 2.80GHz 16GB, GTX 1050 4096MB (Personal Computer)
 
 ### Boid's Flocking Simulation
+-----------------------------
 
-//insert images and gifs.
+- The simulation contains 100000 boids.
+
+![](images/FlockingSim.gif)
 
 ### Boids's Flocking Simulation Rules
 
+------------------------------------
 __1. Cohesion:__ Boid's in a given neighbourhood follow each other. They move together towards the perceived center of mass of their neighbours.
 
 ```
@@ -68,6 +72,7 @@ end
 ```
 
 ### Implementation Methods
+-----------------------------------
 There are three ways to implement the Boid's flocking simulation on the GPU using CUDA.
     
     1. Naive (Brute Force) Implementation. 
@@ -161,4 +166,5 @@ Question 4. Did changing cell width and checking 27 vs 8 neighboring cells affec
 Answer: Initially as the number of cells increase the performance reduces but as the number of boids increase the performance improves for the 27 cell case as compared to the 8 cell case. This is because we are checking the space with a higher density and thus the search space has a higher probablity of boids that are in the neighgbourhood when we check 27 cells as compared to 8 cells.
 
 ### Reference
+--------------------------------------
 Based on [Conard Parker's notes](http://www.vergenet.net/~conrad/boids/pseudocode.html)
