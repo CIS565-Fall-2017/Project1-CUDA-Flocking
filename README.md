@@ -10,23 +10,22 @@ Tested on: Windows 10, Intel Core i7-7700HQ CPU @ 2.80 GHz, 8GB RAM, NVidia GeFo
 
 
 
- 
- 
+
 - [Features](#features)
 
 
 
-  - [Analysis](#analysis)
+- [Analysis](#analysis)
  
 
 
  
 
-  - [Observations](#observations)
+- [Observations](#observations)
 
 
 
-  - [Blooper](#blooper)
+- [Blooper](#blooper)
  
 
  
@@ -50,15 +49,14 @@ Simulation using Coherent Uniform Grid at 10k boids:
 ### Features
 
 
-
-- [x] **Naiive Implementation:** 
+ - [x] **Naiive Implementation:** 
 In the naiive implementation, nearest neighbour search loops across all other boids. Inefficient.
 
 
-- [x] **Uniform Grid Implementation:** 
+ - [x] **Uniform Grid Implementation:** 
 Separate Boids into cells and then do nearest neighbour search on boids located in nearby cells.
 
-- [x] **Coherent Grid Implementation:**
+ - [x] **Coherent Grid Implementation:**
 A modification and improvement on the Uniform Grid implementation that cuts out having to go through a separate array to check the 
 corret index of the sorted positions. I actually added more here as instead of having two separate arrays for positions and velocities,
 I interweaved both of them into one array to have them contiguous in memory and thereby speed up look up time. I think that actually
