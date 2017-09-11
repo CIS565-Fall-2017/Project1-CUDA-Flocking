@@ -27,6 +27,9 @@ For evaluating performance, I used time per frame in milliseconds and disabled t
   * The coherent grid approach evolves in a very similar way to the uniform grid; they both scale linearly and have some initial overhead.
   ![](images/analysis_count.png)
   A comparison of all three implementations.
+  
+  ![](images/analysis_count_detail.png)
+  A closer look at lower particle count shows the initial overhead due to implementation.
 
 * For each implementation, how does changing the block count and block size affect performance? Why do you think this is?
 
