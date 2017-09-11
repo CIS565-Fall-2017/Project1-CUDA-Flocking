@@ -19,17 +19,23 @@ read times - see INSTRUCTION.md for more.
 
 **Data**
 
-I'm just going to throw some stats at you. Here are how the various implementations performed:
+I'm just going to throw some stats at you to start. Here are how the various implementations performed:
 
 ![](graph1.png)
-Here we see that the naive implementation falls off rather quickly, as we would expect. The uniform grid blows that out of the water, and the coherent memory optimization is still appreciably better than that!
+
+Here we see that the naive implementation falls off rather quickly, as we would expect. The uniform grid makes the most significant optimization (again as we would expect), as we are cutting out
+the vast majority of unnecessary-to-check Boids in the simulation. The coherent memory optimization, which allows the simulation to reduce the number of pointers dereferenced to global memory, is still appreciably better than 
+that, and moreso than I was expecting. The increased performance is welcome, though.
 
 ![](graph2.png)
 
-Turning off the visualization allows for awesomely high performance, but only when using one of the grid implementations.
+Turning off the visualization allows for awesomely high performance, but the overall pattern remains the same. This jump in performance was actually much higher than I was anticipating - I knew draw calls in OpenGL could be
+costly, but we can see that it really cut down on the overall performance of the simulation in the first graph.
 
 ![](graph3.png)
-As we will discuss below, the warp size on my laptop's GPU, the GTX 1050, is 32, so the performance plateau's after increasing the blocksize to 32, as expected.
+
+Here I analyzed the performance versus the number of threads per block for each method at 5000 Boids. As we will discuss below, the warp size on my laptop's GPU, the GTX 1050, is 32, so the performance plateaus after 
+increasing the blocksize to 32, as expected.
 
 **Questions:**
 * For each implementation, how does changing the number of boids affect
