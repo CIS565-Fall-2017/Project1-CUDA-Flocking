@@ -6,6 +6,9 @@
 #include <glm/glm.hpp>
 #include "utilityCore.hpp"
 #include "kernel.h"
+#include <iostream>
+#include <iomanip>
+#include <string>
 
 // LOOK-2.1 potentially useful for doing grid-based neighbor search
 #ifndef imax
@@ -42,9 +45,9 @@ void checkCUDAError(const char *msg, int line = -1) {
 
 // LOOK-1.2 Parameters for the boids algorithm.
 // These worked well in our reference implementation.
-#define rule1Distance 7.0f
-#define rule2Distance 4.0f
-#define rule3Distance 7.0f
+#define rule1Distance 20.0f
+#define rule2Distance 10.0f
+#define rule3Distance 20.0f
 
 #define rule1Scale 0.01f
 #define rule2Scale 0.1f
@@ -97,6 +100,12 @@ int gridSideCount;
 float gridCellWidth;
 float gridInverseCellWidth;
 glm::vec3 gridMinimum;
+
+
+// print index Array matrices
+
+static const int numPerRow{20};
+static const int spacePerInt{5};
 
 /******************
 * initSimulation *
@@ -619,6 +628,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	  return;
   }
   int usedGridCells[maxGridCells];
+  iSelf = particleArrayIndices[iSelf];
   findGridCells(iSelf, gridResolution, gridMin, inverseCellWidth,
 		cellWidth, gridCellStartIndices, pos, usedGridCells);
 
@@ -687,18 +697,22 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	  (numObjects, gridSideCount, gridMinimum, gridInverseCellWidth,
 	   dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
   
-  thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects,
-		      dev_thrust_particleArrayIndices);
   dim3 gridBlocksPerGrid((gridCellCount + blockSize -1) / blockSize);
   // initialize to -1 all the gridCells
   kernResetIntBuffer<<<gridBlocksPerGrid, blockSize>>>(gridCellCount,
 		       dev_gridCellStartIndices, -1);
   kernResetIntBuffer<<<gridBlocksPerGrid, blockSize>>>(gridCellCount,
 		       dev_gridCellEndIndices, -1);
+  //Boids::testGridArrays("Before sorting Grid Cells");
+  thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects,
+		      dev_thrust_particleArrayIndices);
+ // Boids::testGridArrays("AfterGrid Cell Sorting");
   // update the start and end indices
   kernIdentifyCellStartEnd<<<fullBlocksPerGrid, blockSize>>>(numObjects, 
 		 dev_particleGridIndices, dev_gridCellStartIndices,
 		  dev_gridCellEndIndices);
+  cudaDeviceSynchronize();
+  Boids::testGridArrays("After StartEnd Assignment");
   // update the velocity
   kernUpdateVelNeighborSearchScattered<<<fullBlocksPerGrid, blockSize>>>
 	  (numObjects, gridSideCount, gridMinimum, gridInverseCellWidth,
@@ -804,4 +818,57 @@ void Boids::unitTest() {
   cudaFree(dev_intValues);
   checkCUDAErrorWithLine("cudaFree failed!");
   return;
+}
+void printIndexPair(std::string name, int* arr1, int* arr2, int N)
+{
+
+	std::cout << name << std::endl;
+	for (int nleft {0}; nleft < N; nleft+=numPerRow)
+	{
+             for (int i{nleft}; i < N && i < nleft + numPerRow; ++i)
+	     {
+                 std::cout << std::setw(spacePerInt) << i;
+	     }
+	     std::cout << std::endl;
+             for (int i{nleft}; i < N && i < nleft + numPerRow; ++i)
+	     {
+                 std::cout << std::setw(spacePerInt) << arr1[i];
+	     }
+	     std::cout << std::endl;
+	     for (int i{nleft}; i < N && i < nleft + numPerRow; ++i)
+	     {
+		     std::cout << std::setw(spacePerInt) << arr2[i];
+	     }
+	     std::cout << std::endl << std::endl;
+	}
+}
+
+void Boids::testGridArrays(std::string msg)
+{
+   
+  int *host_gridCellStartIndices { new int[gridCellCount]};
+  int *host_gridCellEndIndices { new int[gridCellCount]};
+  int *host_particleArrayIndices { new int[numObjects]};
+  int *host_particleGridIndices { new int[numObjects]};
+
+    
+  // How to copy data back to the CPU side from the GPU
+  cudaMemcpy(host_gridCellStartIndices, dev_gridCellStartIndices, sizeof(int) * gridCellCount,
+		  cudaMemcpyDeviceToHost);
+  cudaMemcpy(host_gridCellEndIndices, dev_gridCellEndIndices, sizeof(int) * gridCellCount,
+		  cudaMemcpyDeviceToHost);
+  cudaMemcpy(host_particleArrayIndices, dev_particleArrayIndices, sizeof(int) * numObjects,
+		  cudaMemcpyDeviceToHost);
+  cudaMemcpy(host_particleGridIndices, dev_particleGridIndices, sizeof(int) * numObjects,
+		  cudaMemcpyDeviceToHost);
+  checkCUDAErrorWithLine("memcpy back of grid arrays failed!");
+  std::cout << msg << std::endl;
+  printIndexPair("GridIndex/ParticleIndex", host_particleGridIndices, host_particleArrayIndices,
+		      numObjects);
+  printIndexPair("GridStartEndArray", host_gridCellStartIndices, host_gridCellEndIndices, 
+		        gridCellCount);
+  delete[] host_gridCellStartIndices;
+  delete[] host_gridCellEndIndices;
+  delete[] host_particleArrayIndices;
+  delete[] host_particleGridIndices;
 }
