@@ -8,7 +8,7 @@ Project 1 - Flocking**
 
 ![](boids.gif)
 
-In this project, we are attempting to simulation the motion of "Boids," which move each frame according to the properties of their neighbors. This can be done a number of ways,
+In this project, we are attempting to simulate the motion of "Boids," which move each frame according to the properties of their neighbors. This can be done a number of ways,
 one of the better ones being to utilize a spatial uniform grid to accelerate the processing of each boid being simulated. On the CPU (even with an acceleration structure such as a uniform grid in place),
 we would be forced to iterate over each boid to process them individually, which is valid, but doesn't scale up well. So, we harness the power of the GPU through CUDA to simulate these Boids in parallel.
 
