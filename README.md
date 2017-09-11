@@ -40,6 +40,14 @@ ____________________________________________________
 
 
 
+Simulation using Coherent Uniform Grid at 10k boids:
+
+![In Action](/images/10k-boids.gif)
+
+
+
+
+
 #### Features
 
 :
@@ -76,7 +84,7 @@ This is a table of what my FPS count was for each different boid count
 This is how it looks in line graph form
 
 
-![FPS](/images/fps-chart.PNG)
+![FPS](/images/fps-graph.PNG)
 
 
 
@@ -124,7 +132,7 @@ So this happened. I call it Neon Cube.
 
 
 
-![Neon Cube](/images/blooper-1.png)
+![Neon Cube](/images/blooper-1.gif)
 
 
 
