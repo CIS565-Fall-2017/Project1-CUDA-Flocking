@@ -67,10 +67,10 @@ Come back to the problem we want to discuss. Since the number of threads that ca
            
             
 
-             
+
 * **For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?**
 
-There are 2 things I did to improve the performace. One is that I reassign the value for `dev_pos` and `dev_vel` according to order of `dev_particleArrayIndices` on GPU using `kernalResortParticleData` function instead of the sorting the `dev_vel` and `dev_pos` on CPU. This definitely will improve the performance, since the time complexity of sorting velocity and position will be decreased from O(nlogn) to O(1); The other is when we want to update the velocity of particles, instead of copying the velocity from `*dev_vel2` to `*dev_vel1`, I directly swap the value of the 2 pointers, which reduces the times we need to access the global memory of GPU and decreases the time complexity of data copy from O(n) to O(1). And as I expected, the performance is improved.
+There are 2 things I did to improve the performace. One is that I reassign the value for `dev_pos` and `dev_vel` according to order of `dev_particleArrayIndices` on GPU using `kernalResortParticleData` function instead of the sorting the `dev_vel` and `dev_pos` on CPU. This definitely will improve the performance, since the time complexity of sorting velocity and position will be decreased from *O(nlogn)* to *O(1)*; The other is when we want to update the velocity of particles, instead of copying the velocity from `*dev_vel2` to `*dev_vel1`, I directly swap the value of the 2 pointers, which reduces the times we need to access the global memory of GPU and decreases the time complexity of data copy from *O(n)* to *O(1)*. And as I expected, the performance is improved.
      
         
 
