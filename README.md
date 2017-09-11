@@ -38,27 +38,26 @@ Here I analyzed the performance versus the number of threads per block for each 
 increasing the blocksize to 32, as expected.
 
 **Questions:**
-* For each implementation, how does changing the number of boids affect
-performance? Why do you think this is?
-Changing the number of boids, or the input "N," has the most direct effect on the performance of the simulation.
+* Changing the number of boids:
+Changing the number of boids, or the input "N" to our simulation, has the most direct effect on the performance of the simulation.
 Each method (Naive, Uniform Grid, Coherent Grid) processes each boid to compute a new velocity (for that boid).
 Each method must take into account a subset of the other boids to do this. So, the method that can take into account as few of
 the other boids for a given boid will perform the best. Obviously, taking into account every other boid (Naive) will perform far worse
 than taking into account only the nearby boids (Uniform Grid).
 
-* For each implementation, how does changing the block count and block size
-affect performance? Why do you think this is?
+* Changing the number of threads per block:
 By changing the block size (and therefore block count), we are directly altering exactly how many boids are processed in parallel at a time. Given that on a GTX 1050, a maximum of 32 threads can be processed at once
 in parallel, it makes sense that performance increase would plateau after increasing the number of threads per block to 32, as seen in the third graph above. Any number lower than 32, and the SMs aren't being used to their full
 potential (not every thread in a warp of 32 threads would be active), and so we witness less performance.
 
-* For the coherent uniform grid: did you experience any performance improvements
-with the more coherent uniform grid? Was this the outcome you expected?
-Why or why not?
+* Experiencing performance improvements with the more coherent uniform grid:
 Comparing to the scattered uniform grid implemenation, adding memory coherence to the boid position/velocity arrays added a 10 - 40% performance increase (!!!) in certain cases, which is very appreciable! This was higher than
 I was initially expecting, but it puts into perspective how costly it can be to derefence pointers to global memory repeatedly. In future projects, I will be sure to incorporate optimizations such as this.
 
-* Did changing cell width and checking 27 vs 8 neighboring cells affect performance?
-Why or why not?
+* Did changing cell width and checking 27 vs 8 neighboring cells:
 Intuitively, we know that checking more cells than is necessary will negatively affect performance. Given that the grid cell size is two times the neighborhood distance, in three dimensions, only 8 grid cells even need to be checked.
-However, here is a brief analysis on how 
+However, here is a brief analysis on how the performance compared, for the coherent grid on a selected number of Boids:
+
+![](graph34.png)
+
+As expected, we experience a pretty severe performance hit, so it is vitally important that we utilize the fact that only 8 grid cells need to actually be checked.
