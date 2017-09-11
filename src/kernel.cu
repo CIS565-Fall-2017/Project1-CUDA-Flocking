@@ -630,7 +630,7 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	kernUpdatePos << <fullBlocksPerGrid, blockSize >> >(numObjects, dt, dev_pos, dev_vel1);
 }
 
-__global__ void kernResortParticleData(int N, int* particleArrayIndices, glm::vec3* pos_sorted, glm::vec3* pos, glm::vec3* vel_sorted, glm::vec3* vel)
+__global__ void kernalResortParticleData(int N, int* particleArrayIndices, glm::vec3* pos_sorted, glm::vec3* pos, glm::vec3* vel_sorted, glm::vec3* vel)
 {
 	int index = blockDim.x*blockIdx.x + threadIdx.x;
 	if (index >= N) return;
@@ -669,7 +669,7 @@ void Boids::stepSimulationCoherentGrid(float dt,float* Neighbour_Search_T) {
 	kernIdentifyCellStartEnd << <fullBlocksPerGrid, blockSize >> >(numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
 	
 	//Resort the boids data to make they are contiguous if they are belong to the same cell
-	kernResortParticleData << <fullBlocksPerGrid, blockSize >> >(numObjects, dev_particleArrayIndices, dev_pos_sorted, dev_pos, dev_vel_sorted, dev_vel1);
+	kernalResortParticleData << <fullBlocksPerGrid, blockSize >> >(numObjects, dev_particleArrayIndices, dev_pos_sorted, dev_pos, dev_vel_sorted, dev_vel1);
 	std::swap(dev_pos, dev_pos_sorted);
 	
 	//Coherent Neighbour searching
