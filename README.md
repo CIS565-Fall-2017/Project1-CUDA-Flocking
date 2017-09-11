@@ -1,3 +1,4 @@
+![](images/header.gif)
 Project 1 CUDA Flocking
 ====================
 
@@ -13,6 +14,8 @@ Project 1 CUDA Flocking
 ## Details
 
 This project solves a flocking simulation with three different implementations: a brute force approach, a uniform grid and a coherent version of this grid. It handles arbitrary cell size for the uniform grid, and tries to be as precise as possible when checking neighbor cells to prevent iterating unnecessary particles.
+
+![](images/50k.gif)
 
 ## Analysis
 
