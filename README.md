@@ -58,6 +58,6 @@ I was initially expecting, but it puts into perspective how costly it can be to 
 Intuitively, we know that checking more cells than is necessary will negatively affect performance. Given that the grid cell size is two times the neighborhood distance, in three dimensions, only 8 grid cells even need to be checked.
 However, here is a brief analysis on how the performance compared, for the coherent grid on a selected number of Boids:
 
-![](graph34.png)
+![](graph4.png)
 
 As expected, we experience a pretty severe performance hit, so it is vitally important that we utilize the fact that only 8 grid cells need to actually be checked.
