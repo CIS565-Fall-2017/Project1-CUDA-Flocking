@@ -138,7 +138,7 @@ __Change in frame rate with increasing boid count:__
 
 ![](images/BoidCoundSheet.PNG) 
 
-![](images/chartBC.PNG)
+![](images/chartBC.png)
 
 __Change in frame rate with increasing block size:__
 
@@ -147,7 +147,7 @@ __Change in frame rate with increasing block size:__
 
 ![](images/BlockSizeSheet.PNG)
 
-![](images/chartBS.PNG)
+![](images/chartBS.png)
 
 Question 1. For each implementation, how does changing the number of boids affect performance? Why do you think this is?
 
