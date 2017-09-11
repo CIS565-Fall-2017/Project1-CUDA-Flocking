@@ -6,7 +6,7 @@ Project 1 - Flocking**
 
 ### 1. Final Results
 ![test img]
-(images/Capture.PNG)
+(https://github.com/wufk/Project1-CUDA-Flocking/blob/master/images/Capture.PNG)
 ### 2. Analysis of Performance
 ##   Number of Boids
 
