@@ -203,7 +203,8 @@ void Boids::initSimulation(int N) {
   
   dev_thrust_particleArrayIndices = thrust::device_ptr<int>(dev_particleArrayIndices);
   dev_thrust_particleGridIndices  = thrust::device_ptr<int>(dev_particleGridIndices);
-	    
+  checkCUDAErrorWithLine("Assign dev_thrust_pointers failed!");
+	 	   
   
   cudaThreadSynchronize();
 }
@@ -706,7 +707,7 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   //Boids::testGridArrays("Before sorting Grid Cells");
   thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects,
 		      dev_thrust_particleArrayIndices);
- // Boids::testGridArrays("AfterGrid Cell Sorting");
+  // Boids::testGridArrays("AfterGrid Cell Sorting");
   // update the start and end indices
   kernIdentifyCellStartEnd<<<fullBlocksPerGrid, blockSize>>>(numObjects, 
 		 dev_particleGridIndices, dev_gridCellStartIndices,
