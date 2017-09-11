@@ -78,8 +78,22 @@ For N >= 7500, the coherent grid method starts to clearly outperform the uniform
 
 This is the outcome I expected. Prior to running the measurements, I theorized that the additional overhead of the coherent grid would hurt it for relaitvely small N, but the coherent grid would scale much better for larger N. My reasons for believing so are the same ones I used above to explain the recorded behavior of each algorithm.
 
+In addition, the coherent grid implementation has three nested loops where the coordinates are iterated in the following order, from outermost to innermost: z, y, x. This allows this implementation to make best use of the coherent memory access. The uniform grid uses the more obvious x, y, z order.
+
 #### Cell width
 
 Below is a graph showing how FPS changes for the grid-based approaches as the number of boids increases. This is graph shows two versions of each algorithm: one where the grid cells have a width of one neighborhood distance (so at most 27 cells are checked per boid), while the other has grid cells with double that width (at most 8 cells are checked per boid). The measurements were taken with visualization disabled.
 
 ![](images/graphCellWidth.png)
+
+First off, I would like to explain the high-level differences between my implementations for the 1-width and 2-width versions of each algorithm. Basically, the 2-width version includes more conditionals when it is looping over potential neighbor cells. These conditionals were added to take into account which sub-octant of the cell the boid is located in. The 1-width version, however, has a simpler loop with fewer conditionals.
+
+Another detail to note is that the 2-width version, in the worst case, checks a 4x4x4 cube, while the 1-width checks a 3x3x3 cube. Thus, for each boid, the 2-width version is expected to check a larger volume, and thus, more boids.
+
+With that in mind, we can move on with the analysis. For N <= 500, the 1-width versions are clearly inferior. This is likely due to the additional overhead of having to check 27 cells instead of just 8 (e.g. this requires more jumps, which can be mispredicted by the GPU and cause stalls). The benefit of checking a potentially smaller number of boids is not significant here, since the boids are spread very sparsely anyway.
+
+For N = 5000, the difference in performance between the 1-width and 2-width versions decreases drastically. At this point, the benefits from having to check a smaller number of boids starts to become more significant and make the 1-width versions scale better locally.
+
+For the uniform grid method, we can notice that the 1-width version begins to outperform the 2-width version at N = 10000. However, for larger N (say, N = 100000), their framerates start converging. This is likely because other costly operations, such as scattered memory accesses, start bottlenecking the performance, reducing the effect of the cell width.
+
+As for the coherent grid method, the 1-width and 2-width versions have comparable performances for N = 10000 and N = 15000. For N >= 20000, the 1-width has noticeably better performance, and it remains better up through N = 100000. This is likely because the coherent grid does not run into the same bottleneck as the uniform grid, so the 1-width versions keeps benefitting from the reduced number of boids checked at each step.
