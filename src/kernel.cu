@@ -461,6 +461,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 				// - For each cell, read the start/end indices in the boid pointer array.
 				int startIndex = gridCellStartIndices[gridCell];
 				int endIndex = gridCellEndIndices[gridCell];
+				if (startIndex == -1 || endIndex == -1) continue;
 				// - Access each boid in the cell and compute velocity change from
 				for (int l = startIndex; l <= endIndex; l++) {
 					int neighbor = particleArrayIndices[l];
@@ -574,6 +575,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 				//   checked in to maximize the memory benefits of reordering the boids data.
 				int startIndex = gridCellStartIndices[gridCell];
 				int endIndex = gridCellEndIndices[gridCell];
+				if (startIndex == -1 || endIndex == -1) continue;
 				// - Access each boid in the cell and compute velocity change from
 				for (int neighbor = startIndex; neighbor <= endIndex; neighbor++) {
 
@@ -658,6 +660,8 @@ void Boids::stepSimulationScatteredGrid(float dt) {
 	thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, dev_thrust_particleArrayIndices);
   // - Naively unroll the loop for finding the start and end indices of each
   //   cell's data pointers in the array of boid indices
+	kernResetIntBuffer <<<(gridCellCount + blockSize - 1) / blockSize, threadsPerBlock>>>(gridCellCount, dev_gridCellStartIndices, -1);
+	kernResetIntBuffer <<<(gridCellCount + blockSize - 1) / blockSize, threadsPerBlock>>>(gridCellCount, dev_gridCellEndIndices, -1);
 	kernIdentifyCellStartEnd <<<blocksPerGrid, threadsPerBlock>>>(numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
 	checkCUDAErrorWithLine("kernIdentifyCellStartEnd failed!");
   // - Perform velocity updates using neighbor search
@@ -687,6 +691,8 @@ void Boids::stepSimulationCoherentGrid(float dt) {
 	thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, dev_thrust_particleArrayIndices);
   // - Naively unroll the loop for finding the start and end indices of each
   //   cell's data pointers in the array of boid indices
+	kernResetIntBuffer <<<(gridCellCount + blockSize - 1) / blockSize, threadsPerBlock>>>(gridCellCount, dev_gridCellStartIndices, -1);
+	kernResetIntBuffer <<<(gridCellCount + blockSize - 1) / blockSize, threadsPerBlock>>>(gridCellCount, dev_gridCellEndIndices, -1);
 	kernIdentifyCellStartEnd<<<blocksPerGrid, threadsPerBlock>>>(numObjects, dev_particleGridIndices, dev_gridCellStartIndices, dev_gridCellEndIndices);
 	checkCUDAErrorWithLine("kernIdentifyCellStartEnd failed!");
   // - BIG DIFFERENCE: use the rearranged array index buffer to reshuffle all
