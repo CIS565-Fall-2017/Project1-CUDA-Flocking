@@ -127,7 +127,7 @@ __Coherent Grid Implementation:__  The way we implemented uniform grid one probl
 
 ![buffers for generating a uniform grid using index sort, then making the boid data coherent](images/Boids%20Ugrids%20buffers%20data%20coherent.png)
 
-### Performance Analysis
+### Performance Analyses
 --------------------------------------
 
 
