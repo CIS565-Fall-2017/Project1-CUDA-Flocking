@@ -21,8 +21,11 @@ Implementation: Uniform Grid
 The following graphs illustrate performance changes based on changes in parameters. Each graph represents a change in only 1 parameter, and where otherwise specified, baseline simulation parameters are as follows:
 
 Threads per Block: 128
+
 Cell Width: 6.0f
+
 Number of Boids: 5000
+
 Grids Queried: 8
 
 This Flocking Boids project showcases 3 implementations of flocking behavior:
