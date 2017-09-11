@@ -189,7 +189,7 @@ void Boids::initSimulation(int N) {
   cudaMalloc((void**)&dev_velCoh, N * sizeof(glm::vec3));
   checkCUDAErrorWithLine("cudaMalloc dev_velCoh failed!");
 
-  cudaThreadSynchronize();
+  cudaDeviceSynchronize();
 }
 
 /******************
@@ -234,7 +234,7 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 
   checkCUDAErrorWithLine("copyBoidsToVBO failed!");
 
-  cudaThreadSynchronize();
+  cudaDeviceSynchronize();
 }
 
 
