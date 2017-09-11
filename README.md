@@ -86,9 +86,7 @@ Below is a graph showing how FPS changes for the grid-based approaches as the nu
 
 ![](images/graphCellWidth.png)
 
-First off, I would like to explain the high-level differences between my implementations for the 1-width and 2-width versions of each algorithm. Basically, the 2-width version includes more conditionals when it is looping over potential neighbor cells. These conditionals were added to take into account which sub-octant of the cell the boid is located in. The 1-width version, however, has a simpler loop with fewer conditionals.
-
-Another detail to note is that the 2-width version, in the worst case, checks a 4x4x4 cube, while the 1-width checks a 3x3x3 cube. Thus, for each boid, the 2-width version is expected to check a larger volume, and thus, more boids.
+First off, let us consider the high-level differences between the 1-width and 2-width versions of each algorithm. Basically, the 2-width version checks fewer cells at each step (8 per boid vs. 27 per boid). However, the 2-width version, in the worst case, checks a 4x4x4 cube, while the 1-width checks a 3x3x3 cube. Thus, for each boid, the 2-width version is expected to check a larger volume, and thus, more boids.
 
 With that in mind, we can move on with the analysis. For N <= 500, the 1-width versions are clearly inferior. This is likely due to the additional overhead of having to check 27 cells instead of just 8 (e.g. this requires more jumps, which can be mispredicted by the GPU and cause stalls). The benefit of checking a potentially smaller number of boids is not significant here, since the boids are spread very sparsely anyway.
 
