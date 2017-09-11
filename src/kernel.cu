@@ -495,10 +495,12 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 	glm::vec3 perceivedNeighborVelocityTotal = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 perceivedNeighborVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
 
-	// Check the neighboring 8 cells
-	for (int i = 0; i < 2; ++i) {
-		for (int j = 0; j < 2; ++j) {
-			for (int k = 0; k < 2; ++k) {
+	// Check the neighboring 8/27 cells
+	// Simply set CHECK_RADIUS to the desired value.
+	int CHECK_RADIUS = 1;
+	for (int i = 0; i < CHECK_RADIUS; ++i) {
+		for (int j = 0; j < CHECK_RADIUS; ++j) {
+			for (int k = 0; k < CHECK_RADIUS; ++k) {
 
 				// Restrict the set of neighbors to stay within the bounds of the grid.
 				int neighborIndex = gridIndex3Dto1D(glm::clamp(octant.x + i, 0, gridResolution - 1), glm::clamp(octant.y + j, 0, gridResolution - 1), 
