@@ -5,7 +5,7 @@ Project 1 - Flocking**
 * Tested on: Windows 10, i5-4590 @ 3.30GHz 8GB, GTX 970 4GB (Personal)
 
 ## Results
-Each of the following clips are recorded at the point for each strategy where framerate is approximately 60.
+Each of these clips are recorded at the point for each strategy where framerate is approximately 60 with visualization.
 
 |![Bruteforce, 20k Boids](images/liceBrute20k.gif)|![Uniform, 100k Boids](images/liceUniform100k.gif)|![Coherent, 250k Boids](images/liceCoherent350k.gif)|
 |:-:|:-:|:-:|
@@ -23,7 +23,7 @@ Once I'd completed the basics for each of the three flocking strategies, I recor
   <img src="images/fps_chart.png"/>
 </p>
 
-In constructing this graph, the framerate was measured for each data point 15 seconds after the start of the program. This was done to minimize the lag that I was always experiencing on startup. The data was retrieved from processes launched directly from the Visual Studio debug tools with "Release" mode. I chose this range of boid counts because I had already experimentally determined 100,000 boids to be the point where I would expect my Uniform grid implementation to run at approximately 60fps.
+In constructing this graph, the framerate was measured for each data point 15 seconds after the start of the program, with visualization toggled off. This was done to minimize the lag that I was always experiencing on startup. The data was retrieved from processes launched directly from the Visual Studio debug tools with "Release" mode. I chose this range of boid counts because I had already experimentally determined 100,000 boids to be the point where I would expect my Uniform grid implementation to run at approximately 60fps.
 
 I'm not sure why the uniform grid initially starts slower and begins to work its way up to peak performance. The results otherwise are to be expected, with Coherent outperforming Uniform and both vastly outperforming the Bruteforce implementation. This helps validate my ideas for why Bruteforce is not scalable.
 
