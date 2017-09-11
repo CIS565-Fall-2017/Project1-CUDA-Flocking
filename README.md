@@ -19,3 +19,6 @@ Images taken at the point for each strategy where FPS is right about 60:
 
 FPS vs Boid Count
 ![Coherent wins](images/fps_chart.png)
+
+FPS vs Block Size with Constant Boid Count
+![Size doesn't seem to matter that much.](images/block_chart.png)
