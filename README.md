@@ -14,17 +14,16 @@ ___
 ![](https://github.com/XinCastle/Project1-CUDA-Flocking/blob/master/images/2017.09.11.23.34.16.gif)
 
 
-This result is tested under the following settings:
-       number of particles: 5000
-       blocksize: 128
-       coherent-uniform
-       rule1Distance 5.0f
-       rule2Distance 3.0f
-	   rule3Distance 5.0f
-	   rule1Scale 0.01f
-	   rule2Scale 0.1f
-	   rule3Scale 0.1f
-	   maxSpeed 1.0f
+*This result is tested under the following settings:
+number of particles: 5000
+blocksize: 128
+coherent-uniform
+rule1Distance 5.0f
+rule2Distance 3.0f
+rule3Distance 5.0f
+rule1Scale 0.01f
+rule2Scale 0.1f
+maxSpeed 1.0f
 
 
 ## Performance Analysis
