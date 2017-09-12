@@ -34,7 +34,7 @@ ___
 The performance of **Naive Boids**, **Uniform Boids** and **Coherent Uniform Boids** is measured by FPS.
 The following is the diagram comparing these three methods.
 
-https://github.com/XinCastle/Project1-CUDA-Flocking/blob/master/images/diagram.png
+![](https://github.com/XinCastle/Project1-CUDA-Flocking/blob/master/images/diagram.png)
 
 **Note:I find the movement of mine looks the same as the example. However, the frame rates of uniform boids
  and coherent uniform boids are much slower than I expect. I checked my algorithm but wasn't able to tell why
