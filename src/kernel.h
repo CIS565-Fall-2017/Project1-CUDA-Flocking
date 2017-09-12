@@ -19,4 +19,6 @@ namespace Boids {
 	void endSimulation();
 	void unitTest();
 	void testGridArrays(std::string);
+	// see the values in a float array
+	void seeFloatArray(std::string, int N, glm::vec3 const * dev_array);
 }
