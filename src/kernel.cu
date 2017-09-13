@@ -45,9 +45,9 @@ void checkCUDAError(const char *msg, int line = -1) {
 #define rule2Distance 3.0f
 #define rule3Distance 5.0f
 
-#define rule1Scale 0.01f
-#define rule2Scale 0.1f
-#define rule3Scale 0.1f
+#define rule1Scale 0.1f
+#define rule2Scale 1.0f
+#define rule3Scale 1.0f
 
 #define maxSpeed 1.0f
 
@@ -133,6 +133,16 @@ __global__ void kernGenerateRandomPosArray(int time, int N, glm::vec3 * arr, flo
   }
 }
 
+__global__ void kernGenerateRandomVelArray(int time, int N, glm::vec3 * arr, float scale) {
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (index < N) {
+		glm::vec3 rand = generateRandomVec3(time, index);
+		arr[index].x = 0.2f;
+		arr[index].y = 0.0f;
+		arr[index].z = 0.0f;
+	}
+}
+
 /**
 * Initialize memory, update some globals
 */
@@ -154,6 +164,10 @@ void Boids::initSimulation(int N) {
   // LOOK-1.2 - This is a typical CUDA kernel invocation.
   kernGenerateRandomPosArray<<<fullBlocksPerGrid, blockSize>>>(1, numObjects,
     dev_pos, scene_scale);
+  checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
+
+  kernGenerateRandomVelArray <<<fullBlocksPerGrid, blockSize >>>(1, numObjects,
+	  dev_vel1, scene_scale);
   checkCUDAErrorWithLine("kernGenerateRandomPosArray failed!");
 
   // LOOK-2.1 computing grid params
@@ -210,8 +224,8 @@ __global__ void kernCopyVelocitiesToVBO(int N, glm::vec3 *vel, float *vbo, float
 void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) {
   dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
 
-  kernCopyPositionsToVBO << <fullBlocksPerGrid, blockSize >> >(numObjects, dev_pos, vbodptr_positions, scene_scale);
-  kernCopyVelocitiesToVBO << <fullBlocksPerGrid, blockSize >> >(numObjects, dev_vel1, vbodptr_velocities, scene_scale);
+  kernCopyPositionsToVBO <<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_pos, vbodptr_positions, scene_scale);
+  kernCopyVelocitiesToVBO <<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_vel1, vbodptr_velocities, scene_scale);
 
   checkCUDAErrorWithLine("copyBoidsToVBO failed!");
 
@@ -231,9 +245,46 @@ void Boids::copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities) 
 */
 __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *pos, const glm::vec3 *vel) {
   // Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
-  // Rule 2: boids try to stay a distance d away from each other
-  // Rule 3: boids try to match the speed of surrounding boids
-  return glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 perceived_center = glm::vec3(0.0f,0.0f,0.0f);
+	glm::vec3 flee_direction = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 perceived_vel = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	glm::vec3 output;
+
+	float distance;
+	int rule1neighbors = 0;
+	int rule3neighbors = 0;
+
+	for (int i = 0; i < N; i++) {
+		if (i != iSelf) {
+			distance = glm::distance(pos[i], pos[iSelf]);
+
+			// Rule 1: boids fly towards their local perceived center of mass, which excludes themselves
+			if (distance < rule1Distance) {
+				perceived_center += pos[i];
+				rule1neighbors++;
+			}
+			// Rule 2: boids try to stay a distance d away from each other
+			if (distance < rule2Distance) flee_direction -= (pos[i] - pos[iSelf]);
+			// Rule 3: boids try to match the speed of surrounding boids
+			if (distance < rule3Distance) {
+				perceived_vel += (vel[i]);
+				rule3neighbors++;
+			}
+		}
+	}
+
+	if (rule1neighbors > 0) {
+		perceived_center /= (rule1neighbors);
+		output += (perceived_center - pos[iSelf]) * rule1Scale;
+	}
+
+	if (rule3neighbors > 0) {
+		perceived_vel /= (rule3neighbors);
+		output += perceived_vel * rule3Scale;
+	}
+
+	return output + flee_direction * rule2Scale;
 }
 
 /**
@@ -242,9 +293,16 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 */
 __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   glm::vec3 *vel1, glm::vec3 *vel2) {
+	int index = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (index >= N) return;
   // Compute a new velocity based on pos and vel1
+	glm::vec3 thisVel = vel1[index] + computeVelocityChange(N, index, pos, vel1);
   // Clamp the speed
+	if (glm::length(thisVel) <= maxSpeed) vel2[index] = thisVel;
+	else vel2[index] = glm::normalize(thisVel) * maxSpeed;
   // Record the new velocity into vel2. Question: why NOT vel1?
+	//we reference vel1 for a snapshot of that step; we don't want
+	//to consider velocities for step n+1 during step n
 }
 
 /**
@@ -348,7 +406,18 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 */
 void Boids::stepSimulationNaive(float dt) {
   // TODO-1.2 - use the kernels you wrote to step the simulation forward in time.
+	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+	kernUpdateVelocityBruteForce <<<fullBlocksPerGrid, blockSize>>>(numObjects, dev_pos, dev_vel1, dev_vel2);
+	checkCUDAErrorWithLine("Brute force calls failed!");
+
+	kernUpdatePos <<<fullBlocksPerGrid, blockSize>>> (numObjects, dt, dev_pos, dev_vel1);
+	checkCUDAErrorWithLine("Position Update calls failed!");
+
   // TODO-1.2 ping-pong the velocity buffers
+	glm::vec3* temp = dev_vel1;
+	dev_vel1 = dev_vel2;
+	dev_vel2 = temp;
+
 }
 
 void Boids::stepSimulationScatteredGrid(float dt) {
