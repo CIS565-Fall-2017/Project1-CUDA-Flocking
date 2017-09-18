@@ -4,7 +4,9 @@ Project 1 - Flocking**
 * Ju Yang
 * Tested on: Windows 7, i7-4710MQ @ 2.50GHz 8GB, GTX 870M 6870MB (Hasee Notebook K770E-i7)
 
-###README
+### README
+
+
 
 1. For each implementation, how does changing the number of boids affect performance? Why do you think this is?
 * With 128 blocks, I tested from 1000 to 10000 biods.
