@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.0)
 
 project(cis565_boids)
+# Crucial magic for CUDA linking
+find_package(Threads REQUIRED)
+find_package(CUDA 8.0 REQUIRED)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+
 
 # Set up include and lib paths
 set(EXTERNAL "external")
@@ -64,10 +68,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     list(APPEND CORELIBS ${X11_LIBRARIES} ${X11_Xrandr_LIB} ${X11_Xxf86vm_LIB} ${X11_Xi_LIB})
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lX11 -lXxf86vm -lXrandr -lXi")
 endif()
-
-# Crucial magic for CUDA linking
-find_package(Threads REQUIRED)
-find_package(CUDA 8.0 REQUIRED)
 
 set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON)
 set(CUDA_SEPARABLE_COMPILATION ON)

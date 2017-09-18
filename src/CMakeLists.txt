@@ -10,5 +10,8 @@ set(SOURCE_FILES
 
 cuda_add_library(src
     ${SOURCE_FILES}
-    OPTIONS -arch=sm_20
+    OPTIONS -arch=sm_61
     )
+
+
+LIST(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_61,code=sm_61")
