@@ -5,6 +5,10 @@ Project 1 - Flocking**
 * Tested on: Windows 7, i7-4710MQ @ 2.50GHz 8GB, GTX 870M 6870MB (Hasee Notebook K770E-i7)
 
 ### README
+![outcome](DOC/aaa.gif)
+This is the outcome of the Coherent method with 5000 bioms and 128 blocks.
+
+
 
 
 
