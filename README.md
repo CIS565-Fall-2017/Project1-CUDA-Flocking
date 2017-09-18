@@ -19,7 +19,9 @@ This is the outcome of the Coherent method with 5000 bioms and 128 blocks.
 ![outcome](DOC/co_visual.png)
 ![outcome](DOC/co_invisible.png)
 
-
+# Performance
+![outcome](DOC/data_1891_image001.gif)
+![outcome](DOC/data_10900_image001.gif)
 
 1. For each implementation, how does changing the number of boids affect performance? Why do you think this is?
 * With 128 blocks, I tested from 1000 to 10000 biods.
