@@ -9,6 +9,9 @@
 #include <cmath>
 #include <vector>
 
+
+
+
 namespace Boids {
     void initSimulation(int N);
     void stepSimulationNaive(float dt);
