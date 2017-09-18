@@ -7,8 +7,17 @@ Project 1 - Flocking**
 ### README
 ![outcome](DOC/aaa.gif)
 This is the outcome of the Coherent method with 5000 bioms and 128 blocks.
+# Naive method
+![outcome](DOC/naive_visible.png)
+![outcome](DOC/naive_invisible.png)
 
+# Uniform_grid
+![outcome](DOC/sa_visual.png)
+![outcome](DOC/sa_invisible.png)
 
+# Coherent Uniform Grid
+![outcome](DOC/co_visual.png)
+![outcome](DOC/co_invisible.png)
 
 
 
