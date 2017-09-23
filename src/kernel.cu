@@ -267,12 +267,12 @@ __device__ glm::vec3 computeVelocityChange(int N, int iSelf, const glm::vec3 *po
 		  num_neighbour_cent ++;
 	  }
 
-	  if (dist < rule1Distance) {
+	  if (dist < rule2Distance) {
 		  // Rule 2: boids try to stay a distance d away from each other
 		  separate += (pos[iSelf] - pos[j]);
 	  }
 
-	  if (dist < rule1Distance) {
+	  if (dist < rule3Distance) {
 		  // Rule 3: boids try to match the speed of surrounding boids
 		  cohesion += vel[j];
 		  num_neighbour_cohe ++;
@@ -507,12 +507,12 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 			  num_neighbour_cent ++;
 		  }
 
-		  if (dist < rule1Distance) {
+		  if (dist < rule2Distance) {
 			  // Rule 2: boids try to stay a distance d away from each other
 			  separate += (pos[current_boid] - pos[neighbour_boid]);
 		  }
 
-		  if (dist < rule1Distance) {
+		  if (dist < rule3Distance) {
 			  // Rule 3: boids try to match the speed of surrounding boids
 			  cohesion += vel1[neighbour_boid];
 			  num_neighbour_cohe ++;
@@ -620,12 +620,12 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 				num_neighbour_cent++;
 			}
 
-			if (dist < rule1Distance) {
+			if (dist < rule2Distance) {
 				// Rule 2: boids try to stay a distance d away from each other
 				separate += (pos[ind] - pos[j]);
 			}
 
-			if (dist < rule1Distance) {
+			if (dist < rule3Distance) {
 				// Rule 3: boids try to match the speed of surrounding boids
 				cohesion += vel1[j];
 				num_neighbour_cohe++;
