@@ -66,7 +66,12 @@ The uniform spatial grid can be further optimized by making memory access to boi
 
 <img src="https://github.com/MegSesh/Project1-CUDA-Flocking/blob/master/images/Boids%20Ugrid%20base.png"/>
 
-width="200" height="400"
+
+| Tables        | Are           | Cool  |
+| ------------- |:-------------:| -----:|
+| col 3 is      | right-aligned | $1600 |
+| col 2 is      | centered      |   $12 |
+| zebra stripes | are neat      |    $1 |
 
 
 Just sort the position and velocity buffers according to the order of the grid cells (particleGridIndices), and create two new buffers (coherent_pos and coherent_vel) that store each boid's position and velocity data in this order. We can just directly access these new buffers when calculating the change in a boid's position and velocity.
