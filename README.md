@@ -66,15 +66,23 @@ The uniform spatial grid can be further optimized by making memory access to boi
 
 <img src="https://github.com/MegSesh/Project1-CUDA-Flocking/blob/master/images/Boids%20Ugrid%20base.png"/>
 
+Below are particleArrayIndices and particleGridIndices according to the diagram of boids in their respective grid cells above.
 
-| Tables        | Are           | Cool  |
-| ------------- |:-------------:| -----:|
-| col 3 is      | right-aligned | $1600 |
-| col 2 is      | centered      |   $12 |
-| zebra stripes | are neat      |    $1 |
+| Indices        		| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  |
+| ------------- 		|:--:| --:| --:| --:| --:| --:| --:| --:| --:| --:|
+| particleArrayIndices  | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  |
+| particleGridIndices   | 5  | 5  | 6  | 10 | 8  | 10 | 7  | 13 | 0  | 5  |
 
 
 Just sort the position and velocity buffers according to the order of the grid cells (particleGridIndices), and create two new buffers (coherent_pos and coherent_vel) that store each boid's position and velocity data in this order. We can just directly access these new buffers when calculating the change in a boid's position and velocity.
+
+Sorting according to grid cell indices so that pointers to boids in the same cell are contiguous in memory: 
+
+| Indices        		| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  |
+| ------------- 		|:--:| --:| --:| --:| --:| --:| --:| --:| --:| --:|
+| particleArrayIndices  | 8  | 0  | 1  | 9  | 2  | 6  | 4  | 3  | 5  | 7  |
+| particleGridIndices   | 0  | 5  | 5  | 5  | 6  | 7  | 8  | 10 | 10 | 13 |
+
 
 
 ## Performance Analysis 
