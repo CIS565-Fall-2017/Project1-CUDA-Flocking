@@ -56,12 +56,7 @@ Three dimensional data is stored in the following one dimensional buffers:
 * `gridCellEndIndices` - stores the end index value to utilize when searching through particleArrayIndices to find which boids are in a grid cell
 
 
-First, boids are identified by an index value (particleArrayIndices) as well as which grid cell they're located in (particleGridIndices). Next, they are sorted according to their cell location, which ensures that pointers to boids in the same cell are contiguous in memory. We can then further abstract this by storing the start and end index into particleGridIndices of each grid cell. This way, given a cell, we can easily find which boids are in it as well as its surrounding cells.
-
-
-### Uniform Spatial Grid + Semi-Coherent Memory Access
-
-The uniform spatial grid can be further optimized by making memory access to boids' position and velocity data memory-coherent. Instead of finding which index from particleArrayIndices we need to access a boid's position and velocity buffers with, we remove the abstraction involving particleArrayIndices.
+First, boids are identified by an index value (particleArrayIndices) as well as which grid cell they're located in (particleGridIndices). Next, they are sorted according to their cell location, which ensures that pointers to boids in the same cell are contiguous in memory. We can then further abstract this by storing the start and end index into particleGridIndices of each grid cell. This way, given a cell, we can easily find which boids are in it as well as its surrounding cells. An example is shown below:
 
 
 <img src="https://github.com/MegSesh/Project1-CUDA-Flocking/blob/master/images/Boids%20Ugrid%20base.png"/>
@@ -73,9 +68,6 @@ Below are particleArrayIndices and particleGridIndices according to the diagram 
 | particleArrayIndices  | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  |
 | particleGridIndices   | 5  | 5  | 6  | 10 | 8  | 10 | 7  | 13 | 0  | 5  |
 
-
-Just sort the position and velocity buffers according to the order of the grid cells (particleGridIndices), and create two new buffers (coherent_pos and coherent_vel) that store each boid's position and velocity data in this order. We can just directly access these new buffers when calculating the change in a boid's position and velocity.
-
 Sorting according to grid cell indices so that pointers to boids in the same cell are contiguous in memory: 
 
 | Indices        		| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  |
@@ -83,6 +75,28 @@ Sorting according to grid cell indices so that pointers to boids in the same cel
 | particleArrayIndices  | 8  | 0  | 1  | 9  | 2  | 6  | 4  | 3  | 5  | 7  |
 | particleGridIndices   | 0  | 5  | 5  | 5  | 6  | 7  | 8  | 10 | 10 | 13 |
 
+
+| Indices        		| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 |
+| ------------- 		|:--:| --:| --:| --:| --:| --:| --:| --:| --:| --:| --:| --:| --:| --:|
+| gridCellStartIndices  | 0  | -1 | -1 | -1 | -1 | 1  | 4  | 5  | 6  | -1 | 7  | -1 | -1 | 9  |
+| gridCellEndIndices    | 0  | -1 | -1 | -1 | -1 | 3  | 4  | 5  | 6  | -1 | 8  | -1 | -1 | 9  |
+
+The indices into particleArrayIndices and gridCellEndIndices correspond to the grid cell indices in particleGridIndices. For example, grid cell #0 only contains boid #8, hence its start and end indices into particleGridIndices are 0 and 0. Grid cell 1-4 don't contain any boids, hence they're labeled with `-1`. Grid cell #5 has boids 0, 1, 9, hence its start and end index into particleGridIndices respectively are 1 and 3. 
+
+If wish to know which boids are in cell 5, we would access them as such: 
+
+cellNumber = 5
+startIndex = gridCellStartIndices[cellNumber] = 1
+endIndex = gridCellEndIndices[cellNumber] = 3
+
+The boids in cell 5 are those in particleArrayIndices[startIndex] to particleArrayIndices[endIndex]  (post sorting by grid cell indices), so boids 0, 1, 9.
+
+
+### Uniform Spatial Grid + Semi-Coherent Memory Access
+
+The uniform spatial grid can be further optimized by making memory access to boids' position and velocity data memory-coherent. Instead of finding which index from particleArrayIndices we need to access a boid's position and velocity buffers with, we remove the abstraction involving particleArrayIndices.
+
+Just sort the position and velocity buffers according to the order of the grid cells (particleGridIndices), and create two new buffers (coherent_pos and coherent_vel) that store each boid's position and velocity data in this order. We can just directly access these new buffers when calculating the change in a boid's position and velocity.
 
 
 ## Performance Analysis 
