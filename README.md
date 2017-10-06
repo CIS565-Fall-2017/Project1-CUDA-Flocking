@@ -1,4 +1,6 @@
-## Project 1: Flocking 
+Project 1: Flocking 
+======================
+
 **Course project for CIS 565: GPU Programming and Architecture, University of Pennsylvania**
 
 * Name: Meghana Seshadri
