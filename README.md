@@ -94,9 +94,15 @@ The boids in cell 5 are those in particleArrayIndices[startIndex] to particleArr
 
 ### Uniform Spatial Grid + Semi-Coherent Memory Access
 
-The uniform spatial grid can be further optimized by making memory access to boids' position and velocity data memory-coherent. Instead of finding which index from particleArrayIndices we need to access a boid's position and velocity buffers with, we remove the abstraction involving particleArrayIndices.
+The uniform spatial grid can be further optimized by making memory access to boids' position and velocity data memory-coherent. Instead of finding which index from particleArrayIndices we need in order to access a boid's position and velocity buffers with, we remove the abstraction involving particleArrayIndices.
 
 Just sort the position and velocity buffers according to the order of the grid cells (particleGridIndices), and create two new buffers (coherent_pos and coherent_vel) that store each boid's position and velocity data in this order. We can just directly access these new buffers when calculating the change in a boid's position and velocity.
+
+| Indices        		| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  |
+| ------------- 		|:--:| --:| --:| --:| --:| --:| --:| --:| --:| --:|
+| particleGridIndices   | 0  | 5  | 5  | 5  | 6  | 7  | 8  | 10 | 10 | 13 |
+| coherent_pos  		| 8  | 0  | 1  | 9  | 2  | 6  | 4  | 3  | 5  | 7  |
+| coherent_vel  		| 8  | 0  | 1  | 9  | 2  | 6  | 4  | 3  | 5  | 7  |
 
 
 ## Performance Analysis 
