@@ -110,40 +110,40 @@ Just sort the position and velocity buffers according to the order of the grid c
 
 ### Framerate change with increasing boid count
 
-**The following graph and chart show the change in frame rate with increasing boid count. They were measured using a block size of 128. Testing with and without the visualization of the simulation produced very little differences.**
+*The following graph and chart show the change in frame rate with increasing boid count. They were measured using a block size of 128. Testing with and without the visualization of the simulation produced very little differences.*
 
 ![](images/boidsandfps-scatter2.PNG)
 
 ![](images/boidsandfpschart2.PNG)
 
 
-`Question One:` For each implementation, how does changing the number of boids affect performance? Why?
+`**Question One:**` For each implementation, how does changing the number of boids affect performance? Why?
 
-`Answer:` Relatively, greatly increasing the number of boids greatly decreases performance across all three implementations. Although, we can see that using the uniform grid and coherent memory access greatly improves performance compared the naive implementation. As explained above, this is because we are greatly reducing the number of boids we need to check against. 
+`**Answer:**` Relatively, greatly increasing the number of boids greatly decreases performance across all three implementations. Although, we can see that using the uniform grid and coherent memory access greatly improves performance compared the naive implementation. As explained above, this is because we are greatly reducing the number of boids we need to check against. 
 
 What's interesting to note though is, with a boid count of less than 5000, we can that the naive implementation is much more efficient than the uniform grid and coherent memory access. This is probably because with such a small number of boids, checking against every one of them ends up being more efficient than all the set up required for the other two optimization methods. Although, with 5000 and more boids, the naive implementation has a huge decrease in performance expontentially.
 
 
-`Question Two:` For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?
+`**Question Two:**` For the coherent uniform grid: did you experience any performance improvements with the more coherent uniform grid? Was this the outcome you expected? Why or why not?
 
-`Answer:` Utilizing a coherent uniform grid also greatly improved performance. This outcome was expected since as explained above, removing the abstraction of the particleArrayIndices buffer and the subsequent 'pointer hunting' we must do with it improves the performance. We can see that making memory access of each boid's position and velocity more memory coherent allows the simulation to operate with 20 times more boids than just using the uniform grid.
+`**Answer:**` Utilizing a coherent uniform grid also greatly improved performance. This outcome was expected since as explained above, removing the abstraction of the particleArrayIndices buffer and the subsequent 'pointer hunting' we must do with it improves the performance. We can see that making memory access of each boid's position and velocity more memory coherent allows the simulation to operate with 20 times more boids than just using the uniform grid.
 
 
 ### Framerate change with increasing block size
 
-**The following graph and chart show the change in frame rate with increasing block size. They were measured using a boid count of 5000.**
+*The following graph and chart show the change in frame rate with increasing block size. They were measured using a boid count of 5000.*
 
 ![](images/blocksizeandfps-scatter.PNG)
 
 ![](images/blocksizeandfpschart.PNG)
 
 
-`Question Three:` For each implementation, how does changing the block count and block size affect performance? Why do you think this is?
+`**Question Three:**` For each implementation, how does changing the block count and block size affect performance? Why do you think this is?
 
-`Answer:` Each block contains warps that run 32 threads. With block size values lower than 32, a decrease in performance can be seen probably because we are reducing the block to have only one warp with less than 32 threads actually being used, and thus we would need more blocks to accomplish the same amount of work. 
+`**Answer:**` Each block contains warps that run 32 threads. With block size values lower than 32, a decrease in performance can be seen probably because we are reducing the block to have only one warp with less than 32 threads actually being used, and thus we would need more blocks to accomplish the same amount of work. 
 
 
-`Question Four:` Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?
+`**Question Four:**` Did changing cell width and checking 27 vs 8 neighboring cells affect performance? Why or why not?
 
 `Answer:` Changing cell width and the number of neighboring cells to check from 8 to 27 at first shows a decrease in performance as the boid count increases. However, when testing really high boid counts (~100000 and greater), we can see that performance begins to improve with the 27 neighbor case.
 
