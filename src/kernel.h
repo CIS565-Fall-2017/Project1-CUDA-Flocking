@@ -17,5 +17,4 @@ namespace Boids {
     void copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities);
 
     void endSimulation();
-    void unitTest();
 }
