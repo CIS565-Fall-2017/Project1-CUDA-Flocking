@@ -8,7 +8,7 @@ Project 1 - Flocking**
 
 ### Details
 
-  The ![boids](https://en.wikipedia.org/wiki/Boids) algorithm by Craig Reynolds uses three simple rules to simulated flocking motions movement of virtual agents:
+  The [boids](https://en.wikipedia.org/wiki/Boids) algorithm by Craig Reynolds uses three simple rules to simulated flocking motions movement of virtual agents:
   
 **1. Cohesion** - Boids move towards the perceived center of mass of their neighbors
 **2. Separation** - Boids avoid getting to close to their neighbors
