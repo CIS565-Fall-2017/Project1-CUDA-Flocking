@@ -10,9 +10,11 @@ Project 1 - Flocking**
 
   The [boids](https://en.wikipedia.org/wiki/Boids) algorithm by Craig Reynolds uses three simple rules to simulated flocking motions movement of virtual agents:
   
-**1. Cohesion** - Boids move towards the perceived center of mass of their neighbors
-**2. Separation** - Boids avoid getting to close to their neighbors
-**3. Alignment** - Boids generally try to move with the same direction and speed as their neighbors
+>**1. Cohesion** - Boids move towards the perceived center of mass of their neighbors
+>
+>**2. Separation** - Boids avoid getting to close to their neighbors
+>
+>**3. Alignment** - Boids generally try to move with the same direction and speed as their neighbors
 
   Boids poll for these behaviors within a specified radius of influence, ignoring boids outside of that radius. This makes for an embarrassingly parallel system and a perfect opportunity to try out Nvidia's CUDA API and simulate as many birds as possible.
   
