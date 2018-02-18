@@ -484,8 +484,8 @@ __global__ void kernUpdateVelNeighborSearchScattered(const int N, const int grid
 
 	//glm::vec3 diff( cellxyz_float.x - cellxyz.x, cellxyz_float.y - cellxyz.y, cellxyz_float.z - cellxyz.z);
 	//glm::ivec3 sign = glm::sign(diff - glm::vec3(0.5f, 0.5f, 0.5f));//1 vs -1 tells you where the point lies in relation to the xyz planes that spit the cell into 8 regions
-	//sign = (sign - 1) / 2; //converts to -1 or 0, flips a border neighbor cell to the other side (-1) or leaves it there (0)
-	//for (int i = 0; i < possible_neighbs; ++i) {
+	////sign = (sign - 1) / 2; //converts from -1 or 1 to -1 or 0, flips a border neighbor cell to the other side (-1) or leaves it there (0)
+	//for (int i = 0; i < MAXNEIGHBS; ++i) {
 	//	const glm::ivec3 idx( (i&1)*sign.x + cellxyz.x, (i&2)*sign.y + cellxyz.y, (i&4)*sign.z + cellxyz.z);
  //       const int cellidx1d = gridIndex3Dto1D(idx, gridResolution);
 	//	if (idx.x < 0 || idx.y < 0 || idx.z < 0 || idx.x >= gridResolution || idx.y >= gridResolution || idx.z >= gridResolution 
