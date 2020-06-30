@@ -9,7 +9,8 @@ Project 1 - Boids**
 
 ### Overview
 
-![](images/results/Boids_flockingGif10fps.gif)
+[![](images/results/Boids_flockingGif10fps.gif)](https://vimeo.com/233558094)
+
 ###### (Run on GTX 1070(laptop GPU) with 25000 boids, recorded at 10fps due to file size limitations of github, actual solution runs much faster and smoother)
 
 This project served as an introduction to CUDA kernels, how to use them, and how to analyze their performance. This was done by implementing the Reynolds Boids algorithm in parallel on the GPU.
